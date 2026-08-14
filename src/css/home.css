@@ -1,0 +1,212 @@
+/* ===== 手机桌面（情侣空间） ===== */
+/* 纪念日卡片（纯装饰：头像 + 爱心 + 纪念日；已禁止上传背景图）
+   纯白纸底 + 虚线描边 + 上下装饰点，细节更精致 */
+.deco-widget {
+  position:relative; height:190px; border-radius:26px;
+  margin-bottom:16px; flex-shrink:0;
+  background:#ffffff;
+  border:1px solid rgba(0,0,0,.1);
+  box-shadow:0 4px 14px rgba(0,0,0,.05);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:14px 16px 12px;
+}
+.deco-avatars {
+  display:flex; align-items:center; justify-content:center; gap:22px;
+}
+.deco-avatar { display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer; }
+/* 头像圆环：纯白底 + 细描边 + 立体投影，按压微缩放 */
+.deco-avatar .ring {
+  width:80px; height:80px; border-radius:50%;
+  background:#fff; border:2px solid rgba(0,0,0,.08);
+  box-shadow:0 4px 12px rgba(0,0,0,.08);
+  display:flex; align-items:center; justify-content:center; overflow:hidden;
+  transition:transform .18s ease, box-shadow .18s ease;
+}
+.deco-avatar:active .ring { transform:scale(.95); box-shadow:0 2px 6px rgba(0,0,0,.1); }
+.deco-avatar .ring svg { width:34px; height:34px; }
+.deco-avatar .ring img { width:100%; height:100%; object-fit:cover; display:block; border-radius:50%; }
+/* 昵称：白底虚线描边胶囊，印章标签感 */
+.deco-avatar .lbl {
+  font-size:11px; color:#666; font-weight:600; letter-spacing:.5px;
+  background:#fff; border:1px solid rgba(0,0,0,.1);
+  padding:3px 13px; border-radius:99px; cursor:pointer;
+}
+.deco-avatar .lbl:hover { background:rgba(0,0,0,.04); }
+/* 中间爱心：直接显示爱心图标，无圆框 */
+.deco-heart {
+  flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  color:#111;
+}
+.deco-heart svg { width:20px; height:20px; }
+/* 底部纪念日：虚线与头像区隔，天数大字加粗、日期小字灰，单行不换行 */
+.deco-love {
+  margin-top:12px; text-align:center; color:var(--ink);
+  width:84%;
+  border-top:1px solid rgba(0,0,0,.1);
+  padding-top:10px;
+  line-height:1.6;
+  display:flex; align-items:baseline; justify-content:center; gap:10px;
+}
+.deco-love #love-days { font-size:20px; font-weight:800; letter-spacing:1px; white-space:nowrap; }
+.deco-love #love-date {
+  font-size:11px; color:var(--muted); letter-spacing:.5px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;
+}
+
+/* 小卡片行：今日情话 / 纪念日倒计时 */
+.mini-row { display:flex; gap:12px; margin-bottom:14px; flex-shrink:0; }
+.mini-card { flex:1; border-radius:20px; padding:14px; box-shadow:0 6px 16px rgba(0,0,0,.06); }
+.mc-top { font-size:11px; color:var(--muted); letter-spacing:1px; }
+.mc-b { font-size:13px; font-weight:600; color:var(--ink); margin-top:6px; line-height:1.45; }
+.mc-b b { font-size:16px; }
+
+/* 打卡横幅 */
+.checkin {
+  display:flex; align-items:center; gap:10px;
+  border-radius:18px; padding:12px 14px; margin:0 2px 16px; flex-shrink:0;
+}
+.ck-heart {
+  width:30px; height:30px; border-radius:50%; flex-shrink:0;
+  background:var(--ink); color:#fff;
+  display:flex; align-items:center; justify-content:center; font-size:13px;
+}
+.ck-txt {
+  flex:1; font-size:11px; color:#555; font-weight:500; letter-spacing:.5px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.ck-btn {
+  font-size:11px; font-weight:700; color:#fff; cursor:pointer;
+  background:var(--ink); padding:6px 13px; border-radius:99px;
+  box-shadow:0 3px 8px rgba(0,0,0,.12);
+}
+.ck-btn.done { background:#e2e2e2; color:#777; box-shadow:none; }
+
+/* 应用图标 */
+.app-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:22px 10px; padding:2px 8px 6px; }
+.app { display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer; }
+.app .app-ico {
+  width:58px; height:58px; border-radius:18px;
+  background: rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.1);
+  box-shadow:0 2px 8px rgba(0,0,0,.04);
+  display:flex; align-items:center; justify-content:center;
+  transition:transform .18s ease, box-shadow .18s ease;
+}
+.app:hover .app-ico {
+  transform:translateY(-2px) scale(1.05);
+  box-shadow:0 4px 12px rgba(0,0,0,.08);
+}
+.app .app-ico svg { width:28px; height:28px; stroke:var(--ink); }
+.app .app-ico img { width:100%; height:100%; object-fit:cover; border-radius:18px; display:block; }
+.app-grid.editing .app-ico { outline:2px solid var(--ink); outline-offset:3px; }
+.app .app-name { font-size:11px; color:var(--ink); letter-spacing:.5px; }
+
+/* 桌面功能区（直接显示） */
+.app-grid { margin-top:8px; }
+
+/* 桌面分页（横向滚动翻页，scroll-snap 原生吸附，不用 transform 避免毛玻璃渲染 bug） */
+.desktop-pages {
+  flex:1; min-height:0; display:flex;
+  overflow-x:auto; overflow-y:hidden;
+  scroll-snap-type:x mandatory;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none; -ms-overflow-style:none;
+}
+.desktop-pages::-webkit-scrollbar { display:none; }
+.page-slide {
+  width:100%; flex-shrink:0; height:100%;
+  scroll-snap-align:start;
+  overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none;
+}
+.page-slide::-webkit-scrollbar { display:none; }
+
+/* 分页指示器 */
+.dots { display:flex; justify-content:center; gap:8px; padding:12px 0 0; flex-shrink:0; }
+.dot {
+  width:7px; height:7px; border-radius:99px; background:#c9c9c9; cursor:pointer;
+  transition:width .25s ease, background .25s ease;
+}
+.dot.active { width:20px; background:var(--ink); }
+
+/* ---- 音乐播放器小组件（第二页） ---- */
+.music-widget {
+  border-radius:24px; padding:16px; margin-bottom:14px;
+  box-shadow:0 8px 20px rgba(0,0,0,.07);
+}
+.mw-head {
+  display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;
+}
+.mw-tag { font-size:11px; color:var(--muted); letter-spacing:2px; font-weight:600; }
+.mw-bars { width:18px; height:18px; }
+
+.mw-main { display:flex; align-items:center; gap:14px; }
+.mw-cover { flex-shrink:0; }
+.mw-vinyl {
+  width:86px; height:86px; border-radius:50%;
+  background:radial-gradient(circle at 50% 50%, #2a2a2a 0%, #1a1a1a 55%, #3a3a3a 56%, #2e2e2e 100%);
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 6px 14px rgba(0,0,0,.30), inset 0 0 0 1px rgba(255,255,255,.08);
+  animation:spin 14s linear infinite;
+}
+.mw-vinyl svg { width:26px; height:26px; stroke:#fff; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+.mw-info { flex:1; min-width:0; }
+.mw-song { font-size:16px; font-weight:700; letter-spacing:.5px; }
+.mw-artist { font-size:11px; color:var(--muted); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mw-progress { margin-top:10px; }
+.mw-bar {
+  position:relative; height:4px; border-radius:99px; background:#e3e3e3;
+}
+.mw-fill {
+  position:absolute; left:0; top:0; bottom:0; width:38%; border-radius:99px;
+  background:linear-gradient(90deg,#555,#111);
+}
+.mw-knob {
+  position:absolute; left:38%; top:50%; transform:translate(-50%,-50%);
+  width:11px; height:11px; border-radius:50%; background:#111;
+  box-shadow:0 1px 4px rgba(0,0,0,.35);
+}
+.mw-times {
+  display:flex; justify-content:space-between; margin-top:5px;
+  font-size:10px; color:var(--muted);
+}
+
+.mw-controls {
+  display:flex; align-items:center; justify-content:space-between; margin-top:14px;
+  padding:0 6px;
+}
+.mw-btn { width:26px; height:26px; color:var(--ink); cursor:pointer; transition:transform .15s ease; }
+.mw-btn:hover { transform:scale(1.15); }
+.mw-play {
+  width:52px; height:52px; border-radius:50%;
+  background:linear-gradient(135deg,#444,#111); color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 6px 14px rgba(0,0,0,.3); cursor:pointer;
+  transition:transform .15s ease;
+}
+.mw-play:hover { transform:scale(1.08); }
+.mw-play svg { width:24px; height:24px; fill:#fff; }
+.mw-heart { width:24px; height:24px; cursor:pointer; transition:transform .15s ease; }
+.mw-heart:hover { transform:scale(1.15); }
+
+/* 音乐播放器封面（圆形，盖在黑胶上） */
+#mw-cover {
+  width:86px; height:86px; border-radius:50%;
+  background:#111; overflow:hidden;
+  box-shadow:0 6px 14px rgba(0,0,0,.3);
+}
+#mw-cover .mw-vinyl {
+  width:100%; height:100%; border-radius:50%;
+  background:transparent;
+}
+.mw-play { cursor:pointer; }
+.mw-btn {
+  background:transparent; border:none; padding:0; cursor:pointer;
+  color:var(--ink); display:flex; align-items:center; justify-content:center;
+}
+.mw-btn svg { width:26px; height:26px; }
+.mw-heart { background:transparent; border:none; padding:0; cursor:pointer; color:var(--ink); }
+.mw-heart.liked { color:#e05555; }
+.mw-heart.liked svg { fill:#e05555; }
+#mw-bar { cursor:pointer; }
