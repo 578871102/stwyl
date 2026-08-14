@@ -18,7 +18,7 @@ html,body { overflow-x:hidden;
   display:flex; align-items:center; justify-content:center;
   transition:opacity .4s ease;
 }
-.splash.hide { opacity:0; pointer-events:none; }
+.splash.hide { opacity:0; pointer-events:none; display:none; }
 .splash-box { text-align:center; }
 .splash-logo {
   width:74px; height:74px; margin:0 auto 16px;

@@ -32,9 +32,7 @@
     poke: [
       ['互动', ['戳一戳', '拍了拍你', '戳了戳你的脸蛋']]
     ],
-    voice: [
-      ['聊天语音', ['语音1', '语音2']]
-    ]
+    voice: []
   };
   const MEDIA_TYPES = { sticker: '表情包', image: '图片', voice: '语音' };
   const IMG_TYPES = MEDIA_TYPES;
@@ -43,7 +41,21 @@
   function loadGroups() {
     try {
       const saved = JSON.parse(store.get('cc-groups') || 'null');
-      if (saved && saved.text) return saved;
+      if (saved && saved.text) {
+        // 迁移：删除旧版语音占位（语音1/语音2）
+        if (saved.voice) {
+          let changed = false;
+          saved.voice.forEach(g => {
+            if (!Array.isArray(g) || !Array.isArray(g[1])) return;
+            const before = g[1].length;
+            g[1] = g[1].filter(c => c !== '语音1' && c !== '语音2');
+            if (g[1].length !== before) changed = true;
+          });
+          saved.voice = saved.voice.filter(g => Array.isArray(g) && Array.isArray(g[1]) && g[1].length);
+          if (changed) { try { store.set('cc-groups', JSON.stringify(saved)); } catch (e) {} }
+        }
+        return saved;
+      }
     } catch (e) {}
     return JSON.parse(JSON.stringify(BUILTIN));
   }
@@ -89,6 +101,22 @@
     clearTimeout(t._timer);
     t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
   }
+
+  // 查看大图（字卡库 / 聊天消息 共用）
+  function viewImage(src) {
+    let mask = document.getElementById('img-view-mask');
+    if (!mask) {
+      mask = document.createElement('div');
+      mask.id = 'img-view-mask';
+      mask.className = 'img-view-mask';
+      mask.innerHTML = '<img class="img-view-img" alt="大图">';
+      mask.addEventListener('click', () => { mask.hidden = true; });
+      document.body.appendChild(mask);
+    }
+    mask.querySelector('.img-view-img').src = src;
+    mask.hidden = false;
+  }
+  window.viewChatImage = viewImage;
 
   function totalCount(g) {
     let n = 0;
@@ -137,22 +165,28 @@
 
   // 字卡项 HTML：图片 dataURL 显示缩略图，否则文字（删除统一走【管理字卡】）
   function cardItemHtml(c) {
-    // 语音字卡：文件名|||音频数据
+    // 语音字卡：文件名|||音频数据（播放按钮：播放中显示动态波形 + 高亮）
     if (typeof c === 'string' && c.indexOf('|||') > 0) {
       const parts = c.split('|||');
       const name = parts[0] || '音频';
       const src = parts[1] || '';
-      return '<div class="cc-ico" style="background:rgba(0,0,0,.05)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg></div><div class="cc-txt"><div class="t" style="color:var(--muted)">' + name + '</div></div><button class="cc-play" data-src="' + src + '">▶</button>';
+      return '<div class="cc-ico" style="background:rgba(0,0,0,.05)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg></div>' +
+        '<div class="cc-txt"><div class="t" style="color:var(--muted)">' + name + '</div></div>' +
+        '<button class="cc-play" data-src="' + src + '" title="播放">' +
+        '<span class="cc-play-ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span>' +
+        '<span class="cc-play-bars"><i></i><i></i><i></i></span></button>';
     }
     if (typeof c === 'string' && c.indexOf('data:') === 0) {
-      return '<div class="cc-ico" style="background:transparent;border:none"><img class="cc-img" src="' + c + '" alt="表情"></div><div class="cc-txt"><div class="t" style="color:var(--muted)">图片表情</div></div>';
+      // 图片字卡：缩略图 + 点击查看大图（无文字标签）
+      return '<div class="cc-ico cc-imgbox"><img class="cc-img" src="' + c + '" alt="图片"></div>';
     }
     return '<div class="cc-txt"><div class="t">' + c + '</div></div>';
   }
 
   function render() {
-    // 表情包分类：网格一行四个；emoji 分类：网格一行六个；其他分类保持行式列表
+    // 表情包分类：网格一行四个；图片分类：网格一行两个；emoji 分类：网格一行六个；其他分类保持行式列表
     list.classList.toggle('cc-grid', cur === 'sticker');
+    list.classList.toggle('cc-grid2', cur === 'image');
     list.classList.toggle('cc-grid6', cur === 'emoji');
     const grps = groups[cur] || [];
     let shown = grps;
@@ -197,6 +231,11 @@
         }
         d.addEventListener('click', () => {
           if (manageMode) { toggleSelect(d, gname, i); return; }
+          // 图片/表情字卡：点击查看大图
+          if (typeof c === 'string' && c.indexOf('data:') === 0) {
+            viewImage(c);
+            return;
+          }
           if (window.logFish) window.logFish();
         });
         list.appendChild(d);
@@ -510,7 +549,7 @@
                   saveGroups(groups);
                   renderGroupsBar();
                   render();
-                  toast('已上传 ' + done + ' 个' + (cur === 'voice' ? '音频' : '图片表情'));
+                  toast('已上传 ' + done + ' 个' + (cur === 'voice' ? '音频' : '图片'));
                 }
               };
               if (cur === 'voice') process(reader.result);
@@ -573,13 +612,26 @@
   }
 
   // 音频播放（事件委托；字卡删除统一走【管理字卡】）
+  // 播放中：按钮高亮 + 图标变波形动画；再次点击暂停；同一时间只播放一条
+  let playingAudio = null;
+  let playingBtn = null;
+  function stopPlay() {
+    if (playingAudio) { try { playingAudio.pause(); } catch (e) {} playingAudio = null; }
+    if (playingBtn) { playingBtn.classList.remove('playing'); playingBtn = null; }
+  }
   list.addEventListener('click', (e) => {
     const btn = e.target.closest('.cc-play');
     if (!btn) return;
+    if (playingBtn === btn) { stopPlay(); return; }
     const src = btn.dataset.src;
     if (!src) return;
-    const audio = new Audio(src);
-    audio.play();
+    stopPlay();
+    playingAudio = new Audio(src);
+    playingBtn = btn;
+    btn.classList.add('playing');
+    playingAudio.addEventListener('ended', stopPlay);
+    playingAudio.addEventListener('error', stopPlay);
+    playingAudio.play().catch(() => { stopPlay(); toast('播放失败'); });
   });
 
   renderGroupsBar();

@@ -1,0 +1,92 @@
+=== src/css/chat-pages.css (1 行) ===
+  189: ✓ | content:'✓'; color:#fff; font-size:12px; font-weight:700;
+=== src/js/avatar-lib.js (1 行) ===
+  65: ✕ | '<button class="avlib-del">✕</button>';
+=== src/js/call.js (4 行) ===
+  114: 📞 | window.chatAddSystem('📞 ' + (dir === 'in' ? name + ' 来电' : 
+  132: 🔔 | if (window.chatAddSystem) window.chatAddSystem('🔔 ' + name 
+  157: 📞 | if (window.chatAddSystem) window.chatAddSystem('📞 通话已接通');
+  196: 📞 | if (window.chatAddSystem) window.chatAddSystem('📞 拨打 ' + na
+=== src/js/chat.js (13 行) ===
+  104: 😀🙏🌀🫿 | if (/[\uD800-\uDBFF]/.test(c) || /^[😀-🙏🌀-🫿]/u.test(c)) e
+  167: ✓ | ? '<div class="msg-ask-a">✓ 你选择了：' + rec.choiceAnswer + '</d
+  187: ✓ | ? '<div class="msg-ask-a">✓ 你：' + rec.curiousAnswer + '</div
+  207: ✓ | ? '<div class="msg-ask-a">✓ 你：' + rec.roastAnswer + '</div><
+  227: ✓ | ? '<div class="msg-ask-a">✓ 已回答：' + rec.askAnswer + '</div>'
+  279: ★ | // ★ 字卡级局部撤回：正文隐藏被撤段，下方胶囊可展开查看
+  415: ✓ | el.innerHTML = '<div class="msg-choose-card answered"><div c
+  432: ✓ | el.innerHTML = '<div class="msg-choose-card answered"><div c
+  448: ✓ | el.innerHTML = '<div class="msg-choose-card answered"><div c
+  464: ✓ | el.innerHTML = '<div class="msg-ask-card answered"><div clas
+  482: ★ | // ★ 字卡级局部撤回（仿星言）：按标点/空格/换行把消息文本拆成多个「字卡段」，
+  650: ★ | // ★ 字卡级局部撤回（仿星言）：多段文本/情绪卡优先局部撤回，否则整条撤回
+  1451: ✕ | it.innerHTML = '<img src="' + src + '" alt=""><button class=
+=== src/js/chatcard.js (5 行) ===
+  24: ♥ | ['开心', ['(｡♥‿♥｡)', '(◕‿◕)', '(￣▽￣)~*', 'ᕙ(⇀‸↼‶)ᕗ']],
+  25: ☉ | ['日常', ['(¬‿¬)', '( ´･･)ﾉ(._.`)', '(ಥ_ಥ)', '(⊙_☉)', '(づ｡◕‿‿◕
+  28: 😂🥰😭😡😳🤔😴🤗😘🙄 | ['常用', ['😂', '🥰', '😭', '😡', '😳', '🤔', '😴', '🤗', '😘'
+  247: ✕ | '<div class="mg-head"><span>管理分组</span><button class="mg-clo
+  280: ✕ | (builtin ? '<span class="mg-tag">内置</span>' : '<button class
+=== src/js/default-cards-data.js (1 行) ===
+  2: ✿❛♥☉✧♡☆✪👀🙂😊☺️😌🥹🥺🥰😗😘😋😎😉🤔🫡🤫🫢😳😞😔😢😥😤😴🥱🤗🫂🙃😏😮💨😅😁😄😆😑🤭🙈👋🏻👍👎👌✌🤏🙏🫶💪✍👉👈🤲🫳💖💓💞💝❤🩹🩷🤍✨🌸🌷🌹💐🥀🌼🏵🍀☀🌙⭐☕🍵🥛🍰🍦🍜🍛🍔🍎🍏🍊🍋🍐📖🎵🎁🎉🎊🏠🛏🚶💕😭😽 | window.DEFAULT_CARD_DATA = {"main":[["生活碎片",["刚刚整理了一下东西。","今
+=== src/js/mood-followup-data.js (1 行) ===
+  2: 🤍💬🌱🌙🔔✨🎁📖🌟👂🔍🌫🔗🌌 | window.MOOD_FOLLOWUP_DATA = {"mood":[{"group":"喜悦与正向","weigh
+=== src/js/p2-features.js (16 行) ===
+  149: 📅 | statsInfoCard('📅', '第一次聊天', fmtDTFull(firstTs) || '暂无记录') +
+  150: 🕰️ | statsInfoCard('🕰️', '最近聊天', fmtDTFull(lastTs) || '暂无记录') +
+  151: 💬 | statsInfoCard('💬', '聊天消息', (mine + ta) + ' 条') +
+  152: 📝 | statsInfoCard('📝', '文字数量', textChars + ' 字') +
+  153: ⭐ | statsInfoCard('⭐', '收藏记录', favsCount + ' 条');
+  190: 🕐 | statsInfoCard('🕐', '最常聊天时间', peakHour + ':00 - ' + (peakHou
+  191: 📅 | statsInfoCard('📅', '最常聊天日期', '星期' + dayNames[peakDay]) +
+  192: 📊 | statsInfoCard('📊', '平均每日消息', Math.round(total / totalDays) 
+  193: 🔥 | statsInfoCard('🔥', '最长连续聊天', calcStreak(Object.keys(dateCou
+  194: 📈 | statsInfoCard('📈', '单日最高消息', maxSingle + ' 条');
+  214: 📝 | statsBarSection('📝', '文字字卡', textCount, '常用文字', '暂无使用记录') +
+  215: 💭 | statsBarSection('💭', '情绪字卡', emotion, '常见情绪', '暂无使用记录') +
+  216: ❤️ | statsBarSection('❤️', '心意字卡', heart, '常传递心意', '暂无使用记录') +
+  217: 💬 | statsBarSection('💬', '交流意图', intent, '常用交流', '暂无使用记录');
+  438: 📍✨💬 | const CK_LABEL = { place: '📍 地点', action: '✨ 在做什么', msg: '�
+  454: ✕ | '<button class="ta-del" data-i="' + i + '">✕</button></div>'
+=== src/js/personalize.js (3 行) ===
+  538: ✕ | '<button class="me-del">✕</button>';
+  639: ✓ | btn.textContent = '✓ 已打卡';
+  660: ✓ | btn.textContent = '✓ 已打卡';
+=== src/js/records.js (1 行) ===
+  57: 📞📲 | (x.type === 'in' ? '📞 ' + name + ' 来电' : '📲 我拨打 ' + name) 
+=== src/js/ta-ask.js (13 行) ===
+  175: ✕ | '<button class="ta-del" data-idx="' + idx + '">✕</button>' +
+  440: ✨ | const matchTxt = isPref ? '✨ 刚好想到了一起'
+  466: ✨ | const isPref = (rec.choiceMatch || '').indexOf('✨') >= 0;
+  470: ★☆ | html += '<div class="tc-res-head"><span>你的选择</span><button c
+  490: ★ | favBtn.textContent = '★';
+  521: ⭐ | if (favBtn) favBtn.textContent = '⭐ 收藏（' + d.favs.length + '
+  534: ✕ | '<button class="ta-del" data-idx="' + idx + '">✕</button>' +
+  627: 🗑 | '<button class="tc-li-del" data-i="' + i + '">🗑</button></d
+  632: ⭐ | openTCPanel('⭐ 收藏', html);
+  860: ✓ | '<div class="tc-qmain"><div class="tc-qtext">' + String(q.te
+  862: ✕ | '</div><button class="ta-del" data-idx="' + idx + '">✕</butt
+  892: ✓ | return '<div class="tc-listitem"><div class="tc-li-q">' + (q
+  1158: ✕ | '</div><button class="ta-del" data-idx="' + idx + '">✕</butt
+=== src/template.html (21 行) ===
+  79: ♥ | <span class="ck-heart">♥</span>
+  126: ♪ | <span class="mw-tag">♪ 正在播放</span>
+  298: ➕ | <div class="cal-card-title" style="padding:14px 14px 0">➕ 添加
+  315: 📚 | <div class="cal-card-title" style="padding:14px 14px 0">📚 字
+  319: ⭐ | <button class="cc-tool" id="tc-favs">⭐ 收藏（0）</button>
+  343: ➕ | <div class="cal-card-title" style="padding:14px 14px 0">➕ 添加
+  363: 📚 | <div class="cal-card-title" style="padding:14px 14px 0">📚 字
+  367: 💞 | <div class="cal-card-title" style="padding:14px 14px 0">💞 已
+  392: ➕ | <div class="cal-card-title" style="padding:14px 14px 0">➕ 添加
+  408: 📚 | <div class="cal-card-title" style="padding:14px 14px 0">📚 字
+  424: 📍 | <button class="fav-tab sel" data-cktab="place">📍 地点</button
+  425: ✨ | <button class="fav-tab" data-cktab="action">✨ 在做什么</button>
+  426: 💬 | <button class="fav-tab" data-cktab="msg">💬 说的话</button>
+  436: 📍 | <div class="cal-card-title" style="padding:14px 14px 0" id="
+  446: ✕ | <div class="mg-head"><span id="qa-title">回答</span><button cl
+  1076: ✕ | <button class="chat-draft-clear" id="chat-draft-clear" title
+  1096: ✕ | <button class="poke-card-close" id="ck-panel-close">✕</butto
+  1112: ✕ | <button class="poke-card-close" id="poke-card-close">✕</butt
+  1127: ✕ | <button class="poke-card-close" id="emoji-close">✕</button>
+  1214: ✕ | <button class="poke-card-close" id="avlib-close">✕</button>
+  1287: ✕ | <div class="mg-head"><span id="tc-panel-title">TA的小问题</span>

@@ -14,17 +14,16 @@
   display:flex; align-items:center; justify-content:center; gap:22px;
 }
 .deco-avatar { display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer; }
-/* 头像圆环：纯白底 + 细描边 + 立体投影，按压微缩放 */
+/* 头像：无外框，头像直接显示，仅按压微缩放（形状跟随聊天设置的圆形/方形） */
 .deco-avatar .ring {
-  width:80px; height:80px; border-radius:50%;
-  background:#fff; border:2px solid rgba(0,0,0,.08);
-  box-shadow:0 4px 12px rgba(0,0,0,.08);
+  width:80px; height:80px; border-radius:var(--msg-av-radius, 50%);
+  background:transparent;
   display:flex; align-items:center; justify-content:center; overflow:hidden;
-  transition:transform .18s ease, box-shadow .18s ease;
+  transition:transform .18s ease;
 }
-.deco-avatar:active .ring { transform:scale(.95); box-shadow:0 2px 6px rgba(0,0,0,.1); }
+.deco-avatar:active .ring { transform:scale(.95); }
 .deco-avatar .ring svg { width:34px; height:34px; }
-.deco-avatar .ring img { width:100%; height:100%; object-fit:cover; display:block; border-radius:50%; }
+.deco-avatar .ring img { width:100%; height:100%; object-fit:cover; display:block; border-radius:var(--msg-av-radius, 50%); }
 /* 昵称：白底虚线描边胶囊，印章标签感 */
 .deco-avatar .lbl {
   font-size:11px; color:#666; font-weight:600; letter-spacing:.5px;
@@ -82,6 +81,27 @@
 }
 .ck-btn.done { background:#e2e2e2; color:#777; box-shadow:none; }
 
+/* 离周末还有几天（摸鱼小组件） */
+.weekend-box {
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  border-radius:18px; padding:12px 14px; margin:0 2px 16px; flex-shrink:0;
+}
+.we-left { display:flex; flex-direction:column; gap:3px; }
+.we-days { font-size:15px; font-weight:700; color:var(--ink); letter-spacing:.5px; }
+.we-sub { font-size:10px; color:var(--muted); letter-spacing:1px; }
+.we-ta {
+  display:block; margin-top:4px; font-size:11px; color:#555; font-weight:600;
+}
+.we-ta b { color:var(--ink); font-size:13px; }
+.we-btn {
+  flex-shrink:0; border:none; cursor:pointer; font-family:inherit;
+  background:var(--ink); color:#fff; font-size:13px; font-weight:700;
+  padding:9px 15px; border-radius:99px; box-shadow:0 3px 8px rgba(0,0,0,.25);
+  display:flex; align-items:center; gap:4px;
+}
+.we-btn:active { transform:scale(.95); }
+.we-btn b { font-size:16px; }
+
 /* 应用图标 */
 .app-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:22px 10px; padding:2px 8px 6px; }
 .app { display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer; }
@@ -137,7 +157,18 @@
   display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;
 }
 .mw-tag { font-size:11px; color:var(--muted); letter-spacing:2px; font-weight:600; }
-.mw-bars { width:18px; height:18px; }
+.mw-bars { width:18px; height:18px; opacity:.35; transition:opacity .2s ease; }
+/* 播放时：波形条跳动动画 */
+.mw-bars.playing { opacity:1; }
+.mw-bars.playing rect { animation:bar-bounce 1s infinite ease-in-out; transform-origin:center; }
+.mw-bars.playing .b1 { animation-duration:1s; }
+.mw-bars.playing .b2 { animation-duration:1.1s; }
+.mw-bars.playing .b3 { animation-duration:.9s; }
+.mw-bars.playing .b4 { animation-duration:1.3s; }
+@keyframes bar-bounce {
+  0%, 100% { transform:scaleY(.5); }
+  50% { transform:scaleY(1); }
+}
 
 .mw-main { display:flex; align-items:center; gap:14px; }
 .mw-cover { flex-shrink:0; }
@@ -180,26 +211,37 @@
 .mw-btn:hover { transform:scale(1.15); }
 .mw-play {
   width:52px; height:52px; border-radius:50%;
-  background:linear-gradient(135deg,#444,#111); color:#fff;
+  background:#ffffff; color:#111111;
   display:flex; align-items:center; justify-content:center;
-  box-shadow:0 6px 14px rgba(0,0,0,.3); cursor:pointer;
+  border:1px solid rgba(0,0,0,.08);
+  box-shadow:0 6px 14px rgba(0,0,0,.14); cursor:pointer;
   transition:transform .15s ease;
 }
 .mw-play:hover { transform:scale(1.08); }
-.mw-play svg { width:24px; height:24px; fill:#fff; }
+.mw-play svg { width:24px; height:24px; fill:#111111; }
 .mw-heart { width:24px; height:24px; cursor:pointer; transition:transform .15s ease; }
 .mw-heart:hover { transform:scale(1.15); }
+/* 收藏的歌曲：桌面部件爱心点亮（黑色实心） */
+.mw-heart.liked svg { fill:var(--ink); stroke:var(--ink); }
 
-/* 音乐播放器封面（圆形，盖在黑胶上） */
+/* 音乐播放器封面（圆形：有封面显示专辑图，无封面显示音符占位） */
 #mw-cover {
+  position:relative;
   width:86px; height:86px; border-radius:50%;
-  background:#111; overflow:hidden;
-  box-shadow:0 6px 14px rgba(0,0,0,.3);
+  background:#f1f1f1; overflow:hidden;
+  box-shadow:0 4px 12px rgba(0,0,0,.1);
+  border:1px solid rgba(0,0,0,.06);
+  display:flex; align-items:center; justify-content:center;
+}
+#mw-cover .mw-cover-ico {
+  width:30px; height:30px; color:#b9b9b9;
+  transition:opacity .2s ease;
 }
 #mw-cover .mw-vinyl {
-  width:100%; height:100%; border-radius:50%;
-  background:transparent;
+  position:absolute; inset:0; border-radius:50%;
+  background:transparent; animation:none; box-shadow:none; display:block;
 }
+#mw-cover.has-cover .mw-cover-ico { opacity:0; }
 .mw-play { cursor:pointer; }
 .mw-btn {
   background:transparent; border:none; padding:0; cursor:pointer;
@@ -210,3 +252,16 @@
 .mw-heart.liked { color:#e05555; }
 .mw-heart.liked svg { fill:#e05555; }
 #mw-bar { cursor:pointer; }
+
+/* ===== 第二页补充：今日备忘 / 今天的心情 / 本周日常 ===== */
+.memo-card, .mood-card { cursor:pointer; }
+.memo-card .mc-b, .mood-card .mc-b { font-size:12px; }
+.week-card { border-radius:20px; padding:14px; margin-bottom:14px; }
+.week-days { display:flex; gap:6px; margin-top:10px; }
+.week-day {
+  flex:1; text-align:center; padding:7px 0; border-radius:10px;
+  background:rgba(0,0,0,.04); color:var(--muted); font-size:11px;
+}
+.week-day b { display:block; font-size:14px; color:var(--ink); margin-bottom:2px; }
+.week-day.today { background:var(--ink); color:#fff; }
+.week-day.today b { color:#fff; }

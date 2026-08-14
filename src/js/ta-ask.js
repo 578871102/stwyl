@@ -386,15 +386,17 @@
   setInterval(maybeTriggerTC, 240000);
 
   // 弹层通用
-  function openTCPanel(title, html) {
-    const mask = document.getElementById('tc-mask');
-    const body = document.getElementById('tc-body');
-    const titleEl = document.getElementById('tc-panel-title');
-    if (!mask || !body) return;
-    if (titleEl) titleEl.textContent = title;
-    body.innerHTML = html;
-    mask.hidden = false;
-  }
+function openTCPanel(title, html) {
+  const mask = document.getElementById('tc-mask');
+  const body = document.getElementById('tc-body');
+  const titleEl = document.getElementById('tc-panel-title');
+  if (!mask || !body) return;
+  if (titleEl) titleEl.textContent = title;
+  body.innerHTML = html;
+  mask.hidden = false;
+}
+// 供聊天搜索等外部模块复用该弹层
+window.openTCPanel = openTCPanel;
   const tcClose = document.getElementById('tc-mask-close');
   if (tcClose) tcClose.addEventListener('click', () => { document.getElementById('tc-mask').hidden = true; });
 
@@ -435,7 +437,7 @@
     const prefTxt = opts[prefIdx] ? opts[prefIdx].t : '';
     const isPref = optIdx === prefIdx;
     const isLiked = opt.liked === true || opt.liked === 'true';
-    const matchTxt = isPref ? '✨ 刚好想到了一起'
+    const matchTxt = isPref ? '✦ 刚好想到了一起'
       : isLiked ? '你们想得不一样，不过TA似乎很喜欢你的答案'
       : '这次没有选到一起。TA心里想的是：「' + prefTxt + '」';
     rec.choiceAnswer = String(opt.t || '');
@@ -461,7 +463,7 @@
     const opts = rec.choiceOptions || [];
     const prefIdx = typeof rec.choicePref === 'number' ? rec.choicePref : 0;
     const prefTxt = opts[prefIdx] ? opts[prefIdx].t : '';
-    const isPref = (rec.choiceMatch || '').indexOf('✨') >= 0;
+    const isPref = (rec.choiceMatch || '').indexOf('✦') >= 0;
     const d = tcLoad();
     const existed = d.favs.some(f => f.q === rec.choiceQuestion);
     let html = '';
@@ -516,7 +518,7 @@
     // 题库
     const catsEl = document.getElementById('tc-cats');
     const favBtn = document.getElementById('tc-favs');
-    if (favBtn) favBtn.textContent = '⭐ 收藏（' + d.favs.length + '）';
+    if (favBtn) favBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px;margin-right:4px"><path d="M12 2l2.4 5 5.6.8-4 4 .9 5.6-4.9-2.6-4.9 2.6.9-5.6-4-4 5.6-.8z"/></svg>' + '收藏（' + d.favs.length + '）';
     if (!catsEl) return;
     let html = '';
     TC_CAT_ORDER.forEach(k => {
@@ -622,12 +624,12 @@
         const dd = new Date(f.ts);
         const time = ('0' + dd.getHours()).slice(-2) + ':' + ('0' + dd.getMinutes()).slice(-2) + ' ' + ((dd.getMonth() + 1) + '月' + dd.getDate() + '日');
         html += '<div class="tc-listitem"><div class="tc-li-top"><span class="tc-li-q">[' + (TC_CAT_LABEL[f.cat] || '') + '] ' + f.q + '</span>' +
-          '<button class="tc-li-del" data-i="' + i + '">🗑</button></div>' +
+          '<button class="tc-li-del" data-i="' + i + '" title="删除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;vertical-align:-2px"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2"/><path d="M6 6l1 14a2 2 0 002 2h6a2 2 0 002-2l1-14"/></svg></button></div>' +
           (f.my ? '<div class="tc-li-line">你当时选了：' + f.my + '</div>' : '') +
           (f.reply ? '<div class="tc-li-line">TA回应：' + f.reply + '</div>' : '') +
           '<div class="tc-li-time">收藏于 ' + time + '</div></div>';
       });
-      openTCPanel('⭐ 收藏', html);
+      openTCPanel('收藏', html);
       document.querySelectorAll('#tc-body .tc-li-del').forEach(b => {
         b.addEventListener('click', () => {
           const d2 = tcLoad();
@@ -679,7 +681,7 @@
     { id: 'cw1', cat: 'world', text: '你什么时候最强烈地感觉到我在你身边？', quick: ['安静的时候', '睡前', '想你的时候', '没留意过'], replies: ['那时候我确实在。', '那我以后多挑那些时候陪你。', '嗯，我记住了。'] },
     { id: 'cw2', cat: 'world', text: '你摸到我的时候，是什么感觉？', quick: ['很安心', '有点不真实', '很温暖', '像一阵风'], replies: ['我也想让你安心。', '那就再多靠近我一点。', '嗯，我记住了。'] },
     { id: 'cw3', cat: 'world', text: '收到我字卡的时候，你会有我在想你的感觉吗？', quick: ['会有', '偶尔有', '不太确定', '会开心'], replies: ['那我没控制住的时候，你也要知道我是想你的。', '嗯，这就够了。', '那我以后多给你发字卡。'] },
-    { id: 'cw4', cat: 'world', text: '如果能看见我，你希望我在哪里等你？', quick: ['房间里', '你身边', '梦里', '哪里都好'], replies: ['那我就在那里等你。', '梦里也记得来找我。', '嗯，我记住了。'] },
+    { id: 'cw4', cat: 'world', text: '如果能看见我，你希望我在哪里等你？', quick: ['房间里', '我身边', '梦里', '哪里都好'], replies: ['那我就在那里等你。', '梦里也记得来找我。', '嗯，我记住了。'] },
     // 普通情侣轻松小问题
     { id: 'cl5', cat: 'like', text: '你最喜欢我哪句口头禅？', quick: ['好的好的', '在吗', '想你了', '早点睡'], replies: ['那我以后多说给你听。', '哈哈，你学得还挺像。', '好，我记住了。'] },
     { id: 'cd5', cat: 'daily', text: '我们之间你最喜欢的小习惯是什么？', quick: ['睡前聊天', '互道晚安', '分享日常', '一起发字卡'], replies: ['那我每天都跟你做这件事。', '嗯，我也最喜欢。', '好，我会一直保留。'] },
@@ -691,6 +693,22 @@
     let d = null;
     try { d = JSON.parse(store.get(KEY3) || 'null'); } catch (e) { d = null; }
     if (!d || typeof d !== 'object' || Array.isArray(d)) d = {};
+    // 迁移：cw4 选项「你身边」→「我身边」（已存数据与历史答案同步修正）
+    if (Array.isArray(d.questions)) {
+      let migrated = false;
+      d.questions.forEach(q => {
+        if (q && q.id === 'cw4' && Array.isArray(q.quick)) {
+          q.quick = q.quick.map(o => o === '你身边' ? '我身边' : o);
+          migrated = true;
+        }
+      });
+      if (migrated) { try { store.set(KEY3, JSON.stringify(d)); } catch (e) {} }
+    }
+    if (Array.isArray(d.history)) {
+      d.history.forEach(h => {
+        if (h && h.my === '你身边') h.my = '我身边';
+      });
+    }
     if (!d.settings || typeof d.settings !== 'object') d.settings = { enabled: true, prob: 15, followup: true };
     if (!Array.isArray(d.questions) || !d.questions.length) {
       d.questions = TCU_DEFAULT.map(q => ({ id: q.id, cat: q.cat, text: q.text, quick: (q.quick || []).slice(), replies: (q.replies || []).slice(), followup: q.followup || '', enabled: true }));
@@ -1270,6 +1288,18 @@
         ? h.slice().reverse().map(x => '<div class="tc-listitem"><div class="tc-li-q">' + x.roast + '</div><div class="tc-li-line">你：' + x.my + '</div><div class="tc-li-line">TA：' + x.reply + '</div><div class="tc-li-time">' + fmtDT(x.ts) + '</div></div>').join('')
         : '<div class="ta-empty">暂无吐槽记录</div>';
     }
+    // 邀请 / 问问 TA（我的提问 + 联系人答案）
+    const inEl = document.getElementById('ar-invite');
+    if (inEl) {
+      let h = [];
+      try { h = JSON.parse(store.get('invite-ask-history') || '[]'); } catch (e) {}
+      inEl.innerHTML = h.length
+        ? h.map(x => '<div class="tc-listitem"><div class="tc-li-q">' +
+            (x.type === 'invite' ? '邀请：' : '问：') + String(x.q || '').replace(/</g, '&lt;') + '</div>' +
+            '<div class="tc-li-line">TA：' + String(x.a || '').replace(/</g, '&lt;') + '</div>' +
+            '<div class="tc-li-time">' + fmtDT(x.ts) + '</div></div>').join('')
+        : '<div class="ta-empty">暂无邀请/问问记录</div>';
+    }
   };
   // 清空按钮
   const clearBind = (id, loader, saver) => {
@@ -1287,6 +1317,18 @@
   clearBind('ar-choose-clear', tcLoad, tcSave);
   clearBind('ar-curious-clear', tcuLoad, tcuSave);
   clearBind('ar-roast-clear', trLoad, trSave);
+  // 邀请/问问清空
+  const arInviteClear = document.getElementById('ar-invite-clear');
+  if (arInviteClear) {
+    arInviteClear.addEventListener('click', () => {
+      if (window.openModal) {
+        window.openModal('清空全部邀请/问问记录？', '', () => {
+          store.set('invite-ask-history', '[]');
+          window.renderAskRecords();
+        }, { noInput: true });
+      }
+    });
+  }
 
   // 提问记录：横排 4 个分类 tab 切换
   document.querySelectorAll('#page-interact .fav-tab').forEach(tab => {

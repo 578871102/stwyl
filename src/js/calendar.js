@@ -96,12 +96,16 @@
     return entry;
   }
 
-  // 渲染月历
+  // 渲染月历（可切换月份）
+  let viewY = 0, viewM = -1; // 0=当前月
   function renderGrid() {
     const grid = document.getElementById('cal-grid');
     if (!grid) return;
     const now = new Date();
-    const y = now.getFullYear(), m = now.getMonth();
+    if (viewM < 0) { viewY = now.getFullYear(); viewM = now.getMonth(); }
+    const y = viewY, m = viewM;
+    const monthEl = document.getElementById('cal-month-txt');
+    if (monthEl) monthEl.textContent = y + ' 年 ' + (m + 1) + ' 月';
     const first = new Date(y, m, 1);
     const days = new Date(y, m + 1, 0).getDate();
     const startWd = first.getDay();
@@ -109,11 +113,16 @@
     let html = wds.map(w => '<span class="cal-wd">' + w + '</span>').join('');
     for (let i = 0; i < startWd; i++) html += '<span class="cal-cell blank"></span>';
     for (let d = 1; d <= days; d++) {
-      const isToday = d === now.getDate();
+      const isToday = d === now.getDate() && y === now.getFullYear() && m === now.getMonth();
       html += '<span class="cal-cell' + (isToday ? ' today' : '') + '">' + d + '</span>';
     }
     grid.innerHTML = html;
   }
+  // 月份前进/后退
+  const calPrev = document.getElementById('cal-prev');
+  if (calPrev) calPrev.addEventListener('click', () => { viewM--; if (viewM < 0) { viewM = 11; viewY--; } renderGrid(); });
+  const calNext = document.getElementById('cal-next');
+  if (calNext) calNext.addEventListener('click', () => { viewM++; if (viewM > 11) { viewM = 0; viewY++; } renderGrid(); });
 
   // ---- 我的留言（可编辑）----
   function getMyMessage() {
@@ -155,6 +164,8 @@
       if (editing) return;
       document.querySelectorAll('.page').forEach(p => p.hidden = true);
       page.hidden = false;
+      // 每次进入回到本月
+      viewM = -1;
       render();
     });
   }

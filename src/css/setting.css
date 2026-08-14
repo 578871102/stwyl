@@ -21,6 +21,10 @@
   text-align:center; font-size:11px; color:#c0c0c0; letter-spacing:1px;
   padding:6px 0 2px;
 }
+.ver-credit {
+  text-align:center; font-size:10px; color:#d4d4d4; letter-spacing:1px;
+  padding:0 0 8px;
+}
 
 /* ===== 通用设置页（聊天触发概率） ===== */
 .gs-scroll { flex:1; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none; }

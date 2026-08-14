@@ -63,6 +63,18 @@
     })).catch(() => []);
   };
 
+  // 删除
+  window.idbDelete = function (key) {
+    return open().then(db => new Promise((resolve) => {
+      try {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).delete(key);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => resolve(false);
+      } catch (e) { resolve(false); }
+    })).catch(() => false);
+  };
+
   // 恢复：从 IndexedDB 读回 localStorage 缺失的键（初始化时调用）
   window.idbRestore = function (uidPrefix) {
     window.idbGetAllKeys().then(keys => {

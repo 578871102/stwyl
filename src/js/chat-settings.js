@@ -9,6 +9,14 @@
   const root = document.documentElement;
   const body = document.getElementById('chat-body');
   if (!body) return;
+  function toast(msg) {
+    let t = document.getElementById('cc-toast');
+    if (!t) { t = document.createElement('div'); t.id = 'cc-toast'; document.body.appendChild(t); }
+    t.textContent = msg;
+    t.className = 'cc-toast show';
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
+  }
   // 壁纸铺满整个聊天页（含顶部栏/输入栏）
   const chatPage = document.getElementById('page-chat');
 
@@ -23,48 +31,6 @@
     { label: '标准', value: '11px 14px' },
     { label: '宽松', value: '14px 18px' }
   ];
-  // 气泡风格预设：一次应用整套配色（对方气泡/文字、我的气泡/文字、时间轴、输入中、发送按钮）
-  const STYLES = [
-    { label: '简约白', inBg: '#ffffff', inInk: '#111111', outBg: '#111111', outInk: '#ffffff', timeInk: '#111111', typingInk: '#8a8a8a', sendBg: '#111111', sendInk: '#ffffff' },
-    { label: '浅灰', inBg: '#f2f2f2', inInk: '#333333', outBg: '#333333', outInk: '#f2f2f2', timeInk: '#444444', typingInk: '#999999', sendBg: '#333333', sendInk: '#ffffff' },
-    { label: '暖灰', inBg: '#f5f3ee', inInk: '#3a3a35', outBg: '#3a3a35', outInk: '#f5f3ee', timeInk: '#666660', typingInk: '#9a9488', sendBg: '#3a3a35', sendInk: '#f5f3ee' },
-    { label: '深色', inBg: '#2c2c2c', inInk: '#e8e8e8', outBg: '#111111', outInk: '#ffffff', timeInk: '#a0a0a0', typingInk: '#b0b0b0', sendBg: '#000000', sendInk: '#ffffff' },
-    { label: '墨黑', inBg: '#3a3a3a', inInk: '#ffffff', outBg: '#0a0a0a', outInk: '#ffffff', timeInk: '#b5b5b5', typingInk: '#c0c0c0', sendBg: '#0a0a0a', sendInk: '#ffffff' }
-  ];
-  // 识别当前配色属于哪个预设（全部 8 项一致才算），否则显示"自定义"
-  function currentStyle() {
-    const cur = {
-      inBg: store.get('cs-in-bg') || '#ffffff',
-      inInk: store.get('cs-in-ink') || '#111111',
-      outBg: store.get('cs-out-bg') || '#111111',
-      outInk: store.get('cs-out-ink') || '#ffffff',
-      timeInk: store.get('cs-time-ink') || '#111111',
-      typingInk: store.get('cs-typing-ink') || '#8a8a8a',
-      sendBg: store.get('cs-send-bg') || '#111111',
-      sendInk: store.get('cs-send-ink') || '#ffffff'
-    };
-    for (const s of STYLES) {
-      let ok = true;
-      for (const k of ['inBg', 'inInk', 'outBg', 'outInk', 'timeInk', 'typingInk', 'sendBg', 'sendInk']) {
-        if (cur[k] !== s[k]) { ok = false; break; }
-      }
-      if (ok) return s.label;
-    }
-    return '自定义';
-  }
-  function applyStyle(label) {
-    const s = STYLES.find(x => x.label === label);
-    if (!s) return;
-    store.set('cs-in-bg', s.inBg);
-    store.set('cs-in-ink', s.inInk);
-    store.set('cs-out-bg', s.outBg);
-    store.set('cs-out-ink', s.outInk);
-    store.set('cs-time-ink', s.timeInk);
-    store.set('cs-typing-ink', s.typingInk);
-    store.set('cs-send-bg', s.sendBg);
-    store.set('cs-send-ink', s.sendInk);
-    applySettings();
-  }
 
   function applySettings() {
     // 设置页值写入（定义在最前，避免暂时性死区）
@@ -97,8 +63,6 @@
     const avShape = store.get('cs-av-shape') || 'circle';
     root.style.setProperty('--msg-av-radius', avShape === 'square' ? '10px' : '50%');
     set('cs-av-shape-val', avShape === 'square' ? '方形' : '圆形');
-    // 当前风格预设名（全部项一致才显示预设名，否则"自定义"）
-    set('cs-style-preset-val', currentStyle());
     // 聊天壁纸：铺满整个聊天页
     const bg = store.get('cs-bg');
     if (bg && chatPage) {
@@ -110,7 +74,7 @@
     }
     set('cs-font-size-val', fs);
     const pn = BUBBLE_SIZES.find(p => p.value === pad);
-    set('cs-bubble-size-val', pn ? pn.label : '标准');
+    set('cs-bubble-size-val', pn ? pn.label : '自定义');
     set('cs-bg-val', bg ? '已设置' : '');
     const rm = document.getElementById('cs-bg-remove');
     if (rm) rm.hidden = !bg;
@@ -159,17 +123,6 @@
     });
   }
 
-  // 气泡风格预设
-  const csStylePreset = row('cs-style-preset');
-  if (csStylePreset) {
-    csStylePreset.addEventListener('click', () => {
-      if (!window.openModal) return;
-      window.openModal('气泡风格', '', (v) => applyStyle(v), {
-        pills: STYLES.map(s => ({ label: s.label, value: s.label })),
-        pill: currentStyle()
-      });
-    });
-  }
   const csAvShape = row('cs-av-shape');
   if (csAvShape) {
     csAvShape.addEventListener('click', () => {
@@ -196,11 +149,182 @@
   const csPad = row('cs-bubble-size');
   if (csPad) {
     csPad.addEventListener('click', () => {
-      if (!window.openModal) return;
-      window.openModal('聊天气泡框大小', '', (v) => { store.set('cs-bubble-size', v); applySettings(); }, {
-        pills: BUBBLE_SIZES,
-        pill: store.get('cs-bubble-size') || '11px 14px'
+      if (!window.openTCPanel) return;
+      const cur = store.get('cs-bubble-size') || '11px 14px';
+      const curLabel = (BUBBLE_SIZES.find(p => p.value === cur) || {}).label || '自定义';
+      window.openTCPanel('聊天气泡框大小', '' +
+        '<div class="sm-fld"><label>预设大小</label><select class="tc-input" id="cs-pad-preset">' +
+        '<option value="">自定义</option>' +
+        BUBBLE_SIZES.map(p => '<option value="' + p.value + '"' + (p.value === cur ? ' selected' : '') + '>' + p.label + '</option>').join('') +
+        '</select></div>' +
+        '<div class="sm-fld"><label>自定义（格式：上下 左右，如 <code>8px 10px</code>）</label>' +
+        '<input class="tc-input" id="cs-pad-input" value="' + cur + '"></div>' +
+        '<div class="sm-set-hint">示例：紧凑 8px 10px · 标准 11px 14px · 宽松 14px 18px</div>' +
+        '<div class="mail-actions"><button class="cc-tool" id="cs-pad-cancel">取消</button><button class="cc-tool" id="cs-pad-ok">应用</button></div>');
+      document.getElementById('cs-pad-cancel').addEventListener('click', () => { document.getElementById('tc-mask').hidden = true; });
+      document.getElementById('cs-pad-preset').addEventListener('change', () => {
+        const v = document.getElementById('cs-pad-preset').value;
+        if (v) document.getElementById('cs-pad-input').value = v;
+      });
+      document.getElementById('cs-pad-ok').addEventListener('click', () => {
+        let v = (document.getElementById('cs-pad-input').value || '').trim();
+        if (!v) { toast('请输入气泡框大小'); return; }
+        // 规范化：数字+px 或 纯数字（默认px）
+        v = v.replace(/(\d+(?:\.\d+)?)(?!px)\b/g, '$1px');
+        store.set('cs-bubble-size', v);
+        document.getElementById('tc-mask').hidden = true;
+        applySettings();
+        toast('气泡框大小已应用');
       });
     });
   }
+
+  // ================= 聊天气泡字体（上传本地字体 / 输入字体名或链接） =================
+  const csFontRow = row('cs-font');
+  const FONT_KEY = 'cs-font';
+  function fontVal() { return store.get(FONT_KEY) || ''; }
+  function applyFont() {
+    // 移除旧的字体样式
+    const old = document.getElementById('cs-font-style');
+    if (old) old.remove();
+    const v = fontVal();
+    const setVal = document.getElementById('cs-font-val');
+    if (setVal) setVal.textContent = v ? (v.indexOf('data:') === 0 ? '已上传' : v) : '默认';
+    if (!v) {
+      document.body.style.fontFamily = '';
+      document.documentElement.style.fontFamily = '';
+      return;
+    }
+    // dataURL → @font-face 注入
+    if (v.indexOf('data:') === 0) {
+      const st = document.createElement('style');
+      st.id = 'cs-font-style';
+      st.textContent = '@font-face{font-family:"cs-custom-font";src:url("' + v + '");font-display:swap;}' +
+        '#chat-body,.msg-bubble,.msg-text{font-family:"cs-custom-font",sans-serif !important;}';
+      document.head.appendChild(st);
+      return;
+    }
+    // 字体名直接应用
+    document.body.style.fontFamily = '"' + v + '",sans-serif';
+    document.documentElement.style.fontFamily = '"' + v + '",sans-serif';
+  }
+  if (csFontRow) {
+    csFontRow.addEventListener('click', () => {
+      if (!window.openTCPanel) return;
+      window.openTCPanel('聊天气泡字体', '' +
+        '<div class="sm-fld"><label>上传本地字体（ttf / otf / woff / woff2）</label>' +
+        '<input class="tc-input" id="cs-font-name" placeholder="也可直接输入字体名，如 Microsoft YaHei"' + (fontVal() && fontVal().indexOf('data:') !== 0 && fontVal().indexOf('http') !== 0 ? ' value="' + fontVal() + '"' : '') + '></div>' +
+        '<div class="mail-actions"><button class="cc-tool" id="cs-font-upload">上传字体</button><button class="cc-tool" id="cs-font-clear">恢复默认</button><button class="cc-tool" id="cs-font-ok">应用</button></div>');
+      document.getElementById('cs-font-upload').addEventListener('click', () => {
+        const inp = document.createElement('input');
+        inp.type = 'file';
+        inp.accept = '.ttf,.otf,.woff,.woff2';
+        inp.onchange = () => {
+          const f = inp.files && inp.files[0];
+          if (!f) return;
+          const reader = new FileReader();
+          reader.onload = () => {
+            store.set(FONT_KEY, reader.result);
+            document.getElementById('tc-mask').hidden = true;
+            applyFont();
+            toast('字体已应用');
+          };
+          reader.readAsDataURL(f);
+        };
+        inp.click();
+      });
+      document.getElementById('cs-font-clear').addEventListener('click', () => {
+        try { localStorage.removeItem(uid + ':' + FONT_KEY); } catch (e) {}
+        document.getElementById('tc-mask').hidden = true;
+        applyFont();
+        toast('已恢复默认字体');
+      });
+      document.getElementById('cs-font-ok').addEventListener('click', () => {
+        const name = (document.getElementById('cs-font-name').value || '').trim();
+        if (!name) { toast('请输入字体名'); return; }
+        // 链接：尝试下载并转 dataURL（失败则按字体名应用）
+        if (/^https?:\/\/.+\.(ttf|otf|woff|woff2)$/i.test(name)) {
+          fetch(name, { mode: 'cors' }).then(r => r.blob()).then(blob => {
+            const rd = new FileReader();
+            rd.onload = () => {
+              store.set(FONT_KEY, rd.result);
+              document.getElementById('tc-mask').hidden = true;
+              applyFont();
+              toast('字体已应用');
+            };
+            rd.readAsDataURL(blob);
+          }).catch(() => {
+            store.set(FONT_KEY, name);
+            document.getElementById('tc-mask').hidden = true;
+            applyFont();
+            toast('字体已应用（链接读取失败，已按字体名应用）');
+          });
+          return;
+        }
+        store.set(FONT_KEY, name);
+        document.getElementById('tc-mask').hidden = true;
+        applyFont();
+        toast('字体已应用');
+      });
+    });
+  }
+  applyFont();
+
+  // ================= 气泡 CSS（自定义样式，极简黑白灰） =================
+  const csCss = row('cs-css');
+  const CSS_KEY = 'cs-bubble-css';
+  function applyCss() {
+    const old = document.getElementById('cs-bubble-style');
+    if (old) old.remove();
+    const css = store.get(CSS_KEY) || '';
+    const setVal = document.getElementById('cs-css-val');
+    if (setVal) setVal.textContent = css ? '已设置' : '默认';
+    if (!css) return;
+    let out = css;
+    // 声明块（无选择器）→ 应用到我的/对方气泡
+    if (css.indexOf('{') < 0) {
+      out = '.msg-out .msg-bubble{' + css + '!important;}' +
+            '.msg-in .msg-bubble{' + css + '!important;}';
+    } else {
+      // 用户选择器映射到 mochi 气泡
+      out = css
+        .replace(/\.msg-out\b/g, '.msg-out')
+        .replace(/\.msg-in\b/g, '.msg-in')
+        .replace(/\.message-sent\b/g, '.msg-out .msg-bubble')
+        .replace(/\.message-received\b/g, '.msg-in .msg-bubble')
+        .replace(/\.mb\.self\b/g, '.msg-out .msg-bubble')
+        .replace(/\.mb\.other\b/g, '.msg-in .msg-bubble')
+        .replace(/\.bubble-self\b/g, '.msg-out .msg-bubble')
+        .replace(/\.bubble-other\b/g, '.msg-in .msg-bubble');
+    }
+    const st = document.createElement('style');
+    st.id = 'cs-bubble-style';
+    st.textContent = out;
+    document.head.appendChild(st);
+  }
+  if (csCss) {
+    csCss.addEventListener('click', () => {
+      if (!window.openTCPanel) return;
+      window.openTCPanel('气泡 CSS', '' +
+        '<div class="sm-fld-hint" style="margin-bottom:8px">输入自定义样式，支持两种写法：<br>· 直接写声明，如 <code>border-radius:20px;box-shadow:0 2px 8px rgba(0,0,0,.1)</code>（自动应用到双方气泡）<br>· 或写选择器，如 <code>.msg-out .msg-bubble{...}</code></div>' +
+        '<textarea id="cs-css-input" class="tc-input" rows="6" placeholder="border-radius: 20px;' + '&#10;box-shadow: 0 2px 8px rgba(0,0,0,.12);"></textarea>' +
+        '<div class="mail-actions"><button class="cc-tool" id="cs-css-clear">清空</button><button class="cc-tool" id="cs-css-ok">应用</button></div>');
+      const ta = document.getElementById('cs-css-input');
+      if (ta) ta.value = store.get(CSS_KEY) || '';
+      document.getElementById('cs-css-clear').addEventListener('click', () => {
+        try { localStorage.removeItem(uid + ':' + CSS_KEY); } catch (e) {}
+        document.getElementById('tc-mask').hidden = true;
+        applyCss();
+        toast('已清空气泡样式');
+      });
+      document.getElementById('cs-css-ok').addEventListener('click', () => {
+        const v = (document.getElementById('cs-css-input').value || '').trim();
+        store.set(CSS_KEY, v);
+        document.getElementById('tc-mask').hidden = true;
+        applyCss();
+        toast('气泡样式已应用');
+      });
+    });
+  }
+  applyCss();
 })();

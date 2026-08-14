@@ -444,30 +444,21 @@
   })();
 
   // 今日情话：每天固定随机一条（按日期种子，当天不变，隔天换新）
+  // 字卡库「桌面今日情话」可自定义字卡库；未自定义时用默认库
   (function () {
-    const QUOTES = [
-      '我偏爱你。', '我只对你这样。', '过来，让我抱一下。', '别走，再陪我一会儿。',
-      '你是我的例外。', '今天也很喜欢你。', '你在，我就安心。', '我舍不得你。',
-      '我想和你待久一点。', '你是我想留下的人。', '我想把你留在身边。', '你可以一直依赖我。',
-      '不用猜，我就是喜欢你。', '你对我很重要。', '来我身边。', '我想一直站在你这边。',
-      '你可以多依赖我一点。', '我喜欢你看着我的时候。', '我喜欢你待在我身边。', '你来了，我就不想走了。',
-      '再靠近一点。', '让我抱抱你。', '今天也想见你。', '我想陪着你。',
-      '我希望你一直在。', '你可以把我当成你的归处。', '我想成为你最先想到的人。', '我想把我的偏爱都给你。',
-      '你不用和任何人比较。', '在我这里，你一直是特别的。', '我怎么可能舍得丢下你。', '你回来，我就高兴。',
-      '我等你，不是因为没事做。', '我只是想陪你。', '我喜欢你需要我的样子。', '你不用一个人撑着。',
-      '累了就来找我。', '不管什么时候，你都可以来找我。', '我想听你多说一会儿。', '我还想和你聊很久。',
-      '今天也想把时间留给你。', '我有很多话想告诉你。', '其实我一直都在想你。', '你不在的时候，我会想你。',
-      '我喜欢你在我身边的感觉。', '只要是你，久一点也没关系。'
-    ];
     const el = document.getElementById('love-quote');
     if (!el) return;
-    // 用日期字符串做哈希种子，保证同一天固定、隔天换新
-    const today = fishToday();
-    let hash = 0;
-    for (let i = 0; i < today.length; i++) {
-      hash = (hash * 31 + today.charCodeAt(i)) >>> 0;
-    }
-    el.textContent = QUOTES[hash % QUOTES.length];
+    const text = (window.getQuoteOfDay && window.getQuoteOfDay()) || '我偏爱你。';
+    el.textContent = text;
+    // 今日情话存档：每天一条，全部历史保存在主页（同一天不重复）
+    try {
+      const today = fishToday();
+      const list = JSON.parse(store.get('quote-history') || '[]');
+      if (!list.length || list[0].date !== today) {
+        list.unshift({ date: today, text: text, ts: Date.now() });
+        store.set('quote-history', JSON.stringify(list));
+      }
+    } catch (e) {}
   })();
 
   // 恋爱纪念日：已在一起天数（默认不预设日期，设置页选择后显示）
@@ -663,6 +654,146 @@
       logFish();
       const days = getFishLog().length;
       toast('打卡成功！已摸鱼 ' + days + ' 天');
+    });
+  }
+
+  // 离周末还有几天（点击摸鱼 +1，数值累计）
+  const weDays = document.getElementById('weekend-days');
+  const weCount = document.getElementById('weekend-count');
+  const weFish = document.getElementById('weekend-fish');
+  if (weDays) {
+    const day = new Date().getDay(); // 0=日 6=六
+    let daysTo = (6 - day + 7) % 7;   // 距周六
+    if (day === 6 || day === 0) {
+      weDays.textContent = day === 6 ? '今天就是周末啦' : '明天是周六 · 再摸一下';
+    } else {
+      weDays.textContent = '离周末还有 ' + daysTo + ' 天';
+    }
+  }
+  if (weCount) {
+    const n = parseInt(store.get('weekend-fish') || '0', 10) || 0;
+    weCount.textContent = n;
+  }
+  // 我的摸鱼值（累计，与按钮数值一致）
+  const weMineEl = document.getElementById('weekend-mine');
+  const weMineName = document.getElementById('weekend-mine-name');
+  if (weMineName) {
+    const myName = store.get('lbl-user') || '我';
+    weMineName.firstChild.textContent = myName + ' 摸鱼值 ';
+  }
+  if (weMineEl) {
+    weMineEl.textContent = parseInt(store.get('weekend-fish') || '0', 10) || 0;
+  }
+  if (weFish) {
+    weFish.addEventListener('click', () => {
+      const n = (parseInt(store.get('weekend-fish') || '0', 10) || 0) + 1;
+      store.set('weekend-fish', String(n));
+      if (weCount) weCount.textContent = n;
+      if (weMineEl) weMineEl.textContent = n;
+      if (window.logFish) window.logFish();
+    });
+  }
+  // 联系人摸鱼值：使用网站时每 60 秒 60% 概率 +1~10（累计，每日记录）
+  // 我的摸鱼值：同样每 60 秒 60% 概率 +1~10（自动增长，按钮点击仍可 +1）
+  const weTaEl = document.getElementById('weekend-ta');
+  const weTaName = document.getElementById('weekend-ta-name');
+  if (weTaName) {
+    const name = store.get('lbl-partner') || 'TA';
+    weTaName.firstChild.textContent = name + ' 摸鱼值 ';
+  }
+  // 每日摸鱼记录：{ date, mine, ta }（当天累计值）
+  function fishDayKey() {
+    const d = new Date();
+    return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+  }
+  function fishDayLog() {
+    try { return JSON.parse(store.get('fish-day-log') || '[]'); } catch (e) { return []; }
+  }
+  function saveFishDayLog(list) { store.set('fish-day-log', JSON.stringify(list)); }
+  function recordFishDay(mine, ta) {
+    const list = fishDayLog();
+    const key = fishDayKey();
+    const ex = list.find(x => x.date === key);
+    if (ex) { ex.mine = mine; ex.ta = ta; }
+    else { list.push({ date: key, mine: mine, ta: ta }); }
+    if (list.length > 365) list.splice(0, list.length - 365);
+    saveFishDayLog(list);
+  }
+  function syncFishUI() {
+    const mine = parseInt(store.get('weekend-fish') || '0', 10) || 0;
+    const ta = parseInt(store.get('weekend-fish-ta') || '0', 10) || 0;
+    if (weMineEl) weMineEl.textContent = mine;
+    if (weTaEl) weTaEl.textContent = ta;
+    if (weCount) weCount.textContent = mine;
+    recordFishDay(mine, ta);
+    if (window.renderFishHistory) window.renderFishHistory();
+  }
+  if (weTaEl) {
+    syncFishUI();
+    setInterval(() => {
+      try {
+        // 联系人：60% 概率 +1~10
+        if (Math.random() * 100 < 60) {
+          const add = 1 + Math.floor(Math.random() * 10);
+          const n = (parseInt(store.get('weekend-fish-ta') || '0', 10) || 0) + add;
+          store.set('weekend-fish-ta', String(n));
+        }
+        // 我的：60% 概率 +1~10
+        if (Math.random() * 100 < 60) {
+          const add = 1 + Math.floor(Math.random() * 10);
+          const n = (parseInt(store.get('weekend-fish') || '0', 10) || 0) + add;
+          store.set('weekend-fish', String(n));
+        }
+        syncFishUI();
+      } catch (e) {}
+    }, 60000);
+  }
+  // 每日摸鱼值历史（供主页展示）
+  window.getFishHistory = function () { return fishDayLog().slice().reverse(); };
+
+  // 可二传二改的说明：点设置行 → 全屏说明页
+  const licRow = document.getElementById('row-license');
+  if (licRow) {
+    licRow.addEventListener('click', () => {
+      document.querySelectorAll('.page').forEach(p => p.hidden = true);
+      const licPage = document.getElementById('page-license');
+      if (licPage) licPage.hidden = false;
+    });
+  }
+  const licBack = document.getElementById('lic-back');
+  if (licBack) {
+    licBack.addEventListener('click', () => {
+      document.querySelectorAll('.page').forEach(p => p.hidden = true);
+      const setPage = document.getElementById('page-setting');
+      if (setPage) setPage.hidden = false;
+    });
+  }
+
+  // 原版功能介绍：点设置行 → 全屏介绍页
+  const aboutRow = document.getElementById('row-about');
+  if (aboutRow) {
+    aboutRow.addEventListener('click', () => {
+      document.querySelectorAll('.page').forEach(p => p.hidden = true);
+      const aboutPage = document.getElementById('page-about');
+      if (aboutPage) aboutPage.hidden = false;
+    });
+  }
+  const aboutBack = document.getElementById('about-back');
+  if (aboutBack) {
+    aboutBack.addEventListener('click', () => {
+      document.querySelectorAll('.page').forEach(p => p.hidden = true);
+      const setPage = document.getElementById('page-setting');
+      if (setPage) setPage.hidden = false;
+    });
+  }
+
+  // 通话设置：点设置行 → 全屏设置页
+  const callSettingsRow = document.getElementById('row-call-settings');
+  if (callSettingsRow) {
+    callSettingsRow.addEventListener('click', () => {
+      document.querySelectorAll('.page').forEach(p => p.hidden = true);
+      const csPage = document.getElementById('page-call-settings');
+      if (csPage) csPage.hidden = false;
     });
   }
 })();

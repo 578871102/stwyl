@@ -1,5 +1,5 @@
-// ===== 功能：音乐页 / 聊天统计页 / 小互动页 =====
-// 音乐：星音相伴风格，播放列表 + 播放历史
+// ===== 功能：聊天统计页 / 小互动页 =====
+// 音乐：音乐库、播放列表、播放历史
 // 聊天统计：相处天数、消息数、表情包/拍一拍/情绪统计
 // 小互动：拍一拍 TA / 送一句情话
 (function () {
@@ -27,43 +27,6 @@
     clearTimeout(t._timer);
     t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
   }
-
-  // ================= 音乐页 =================
-  const musicApp = document.querySelector('.app[data-app="music"]');
-  const musicPage = document.getElementById('page-music');
-  if (musicApp && musicPage) {
-    musicApp.addEventListener('click', () => {
-      const editing = Array.from(document.querySelectorAll('.app-grid')).some(g => g.classList.contains('editing'));
-      if (editing) return;
-      document.querySelectorAll('.page').forEach(p => p.hidden = true);
-      musicPage.hidden = false;
-      // 播放历史
-      const histEl = document.getElementById('music-history');
-      if (histEl) {
-        try {
-          const h = JSON.parse(store.get('music-history') || '[]');
-          histEl.textContent = h.length ? h.slice(-5).reverse().map(x => x + ' · ' + fmtTime(Date.now())).join('\n') : '暂无播放历史';
-        } catch (e) {}
-      }
-    });
-  }
-  const musicBack = document.getElementById('music-back');
-  if (musicBack) {
-    musicBack.addEventListener('click', () => {
-      document.querySelectorAll('.page').forEach(p => p.hidden = true);
-      const home = document.getElementById('page-phone');
-      if (home) home.hidden = false;
-    });
-  }
-  // 记录播放历史（music-player 播放时调用）
-  window.recordMusicHistory = function (name) {
-    try {
-      const h = JSON.parse(store.get('music-history') || '[]');
-      h.push(name + ' ' + fmtTime(Date.now()));
-      if (h.length > 20) h.splice(0, h.length - 20);
-      store.set('music-history', JSON.stringify(h));
-    } catch (e) {}
-  };
 
   // ================= 聊天统计页 =================
   const statsApp = document.querySelector('.app[data-app="stats"]');
@@ -109,20 +72,25 @@
     const entries = [];
     for (const k in countMap) if (countMap.hasOwnProperty(k)) entries.push({ name: k, count: countMap[k] });
     entries.sort((a, b) => b.count - a.count);
-    let html = '<div style="margin-bottom:16px"><div style="font-size:13px;font-weight:700;color:#555;margin-bottom:8px">' + icon + ' ' + title + '</div>';
+    let html = '<div class="stats-sec">' +
+      '<div class="stats-sec-head"><span class="stats-sec-title">' + icon + title + '</span>' +
+      '<span class="stats-sec-count">' + entries.length + ' 种</span></div>';
     if (!entries.length) {
       html += '<div class="ta-empty">' + emptyText + '</div>';
     } else {
       const top = entries[0].name;
-      html += '<div style="background:rgba(0,0,0,.04);border-radius:12px;padding:12px 14px">';
-      html += '<div style="font-size:11px;color:var(--muted);margin-bottom:4px">' + topLabel + '</div>';
-      html += '<div style="font-size:18px;font-weight:800;color:var(--ink);margin-bottom:10px">「' + String(top).replace(/</g, '&lt;') + '」</div>';
+      const topCount = entries[0].count;
+      html += '<div class="stats-top">' +
+        '<div class="stats-top-tag">' + topLabel + '</div>' +
+        '<div class="stats-top-name">「' + String(top).replace(/</g, '&lt;') + '」</div>' +
+        '<div class="stats-top-num">' + topCount + ' 次</div></div>';
+      html += '<div class="stats-list">';
       entries.slice(0, 5).forEach(e => {
         const w = Math.max(3, Math.round(e.count / entries[0].count * 100));
-        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">' +
-          '<div style="flex:1;height:6px;background:rgba(0,0,0,.06);border-radius:3px;overflow:hidden"><div style="height:100%;background:var(--ink);width:' + w + '%;border-radius:3px"></div></div>' +
-          '<div style="font-size:11px;color:var(--muted);width:52px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + String(e.name).replace(/</g, '&lt;') + '</div>' +
-          '<div style="font-size:11px;color:var(--ink);width:26px;text-align:right">' + e.count + '</div></div>';
+        html += '<div class="stats-item">' +
+          '<span class="stats-item-name">' + String(e.name).replace(/</g, '&lt;') + '</span>' +
+          '<span class="stats-item-bar"><i style="width:' + w + '%"></i></span>' +
+          '<span class="stats-item-num">' + e.count + '</span></div>';
       });
       html += '</div>';
     }
@@ -146,11 +114,11 @@
       let favsCount = 0;
       try { favsCount = (JSON.parse(store.get('fav-msgs') || '[]') || []).length; } catch (e) {}
       recordEl.innerHTML =
-        statsInfoCard('📅', '第一次聊天', fmtDTFull(firstTs) || '暂无记录') +
-        statsInfoCard('🕰️', '最近聊天', fmtDTFull(lastTs) || '暂无记录') +
-        statsInfoCard('💬', '聊天消息', (mine + ta) + ' 条') +
-        statsInfoCard('📝', '文字数量', textChars + ' 字') +
-        statsInfoCard('⭐', '收藏记录', favsCount + ' 条');
+        statsInfoCard('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>', '第一次聊天', fmtDTFull(firstTs) || '暂无记录') +
+        statsInfoCard('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M10 2h4"/></svg>', '最近聊天', fmtDTFull(lastTs) || '暂无记录') +
+        statsInfoCard('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>', '聊天消息', (mine + ta) + ' 条') +
+        statsInfoCard('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M9 13l2 2 4-4"/></svg>', '文字数量', textChars + ' 字') +
+        statsInfoCard('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 5 5.6.8-4 4 .9 5.6-4.9-2.6-4.9 2.6.9-5.6-4-4 5.6-.8z"/></svg>', '收藏记录', favsCount + ' 条');
     }
     // ---- 聊天记录 ----
     const chatEl = document.getElementById('st-chat-content');
@@ -187,11 +155,11 @@
           '<div style="display:flex;align-items:center;gap:8px"><div style="font-size:12px;color:var(--muted);width:28px">' + name + '</div>' +
           '<div style="flex:1;height:8px;background:rgba(0,0,0,.06);border-radius:4px;overflow:hidden"><div style="height:100%;background:#999;width:' + taPct + '%;border-radius:4px"></div></div>' +
           '<div style="font-size:12px;color:var(--ink);width:76px;text-align:right">' + taCount + ' 条 ' + taPct + '%</div></div></div>' +
-          statsInfoCard('🕐', '最常聊天时间', peakHour + ':00 - ' + (peakHour + 1) + ':00') +
-          statsInfoCard('📅', '最常聊天日期', '星期' + dayNames[peakDay]) +
-          statsInfoCard('📊', '平均每日消息', Math.round(total / totalDays) + ' 条') +
-          statsInfoCard('🔥', '最长连续聊天', calcStreak(Object.keys(dateCount)) + ' 天') +
-          statsInfoCard('📈', '单日最高消息', maxSingle + ' 条');
+          statsInfoCard('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>', '最常聊天时间', peakHour + ':00 - ' + (peakHour + 1) + ':00') +
+          statsInfoCard('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>', '最常聊天日期', '星期' + dayNames[peakDay]) +
+          statsInfoCard('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="8"/><line x1="18" y1="20" x2="18" y2="11"/></svg>', '平均每日消息', Math.round(total / totalDays) + ' 条') +
+          statsInfoCard('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c1 3-3 4-3 7a3 3 0 006 0c0-1-.3-2-.8-3 1.8 1 3 3 3 5a6 6 0 11-12 0c0-4 3-6 4.5-8.5z"/></svg>', '最长连续聊天', calcStreak(Object.keys(dateCount)) + ' 天') +
+          statsInfoCard('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>', '单日最高消息', maxSingle + ' 条');
       }
     }
     // ---- 情绪表达 ----
@@ -211,10 +179,10 @@
           });
         });
         exprEl.innerHTML =
-          statsBarSection('📝', '文字字卡', textCount, '常用文字', '暂无使用记录') +
-          statsBarSection('💭', '情绪字卡', emotion, '常见情绪', '暂无使用记录') +
-          statsBarSection('❤️', '心意字卡', heart, '常传递心意', '暂无使用记录') +
-          statsBarSection('💬', '交流意图', intent, '常用交流', '暂无使用记录');
+          statsBarSection('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M9 13l2 2 4-4"/></svg>', '文字字卡', textCount, '常用文字', '暂无使用记录') +
+          statsBarSection('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6a6 6 0 010 12H9c-1 0-2-.2-2.8-.6L3 16l1-3.5A5 5 0 019 3z"/><path d="M17 9h4"/></svg>', '情绪字卡', emotion, '常见情绪', '暂无使用记录') +
+          statsBarSection('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7.5-4.7-9.3-9A5.3 5.3 0 0112 6.4a5.3 5.3 0 019.3 5.6c-1.8 4.3-9.3 9-9.3 9z"/></svg>', '心意字卡', heart, '常传递心意', '暂无使用记录') +
+          statsBarSection('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>', '交流意图', intent, '常用交流', '暂无使用记录');
       }
     }
     const daysEl = document.getElementById('st-days');
@@ -382,14 +350,16 @@ function renderCheckinHistory() {
     } else {
       doCheckin();
     }
+    // 更新时间：日常更新时记录的时间戳
+    const upd = document.getElementById('ck-p-updated');
+    if (upd) {
+      const last = parseInt(store.get('checkin-last'), 10);
+      upd.textContent = last ? '更新于 ' + fmtTime(last) : '';
+    }
     if (panel) panel.hidden = false;
   };
   const ckPanelClose = document.getElementById('ck-panel-close');
   if (ckPanelClose) ckPanelClose.addEventListener('click', () => { document.getElementById('ck-panel').hidden = true; });
-  const ckPanelRefresh = document.getElementById('ck-p-refresh');
-  if (ckPanelRefresh) {
-    ckPanelRefresh.addEventListener('click', () => doCheckin());
-  }
   // 自动轮询：启动立即 + 每 60 秒检查（首次 last=0 立即生成）
   function checkAutoCheckin() {
     try {
@@ -435,7 +405,7 @@ function renderCheckinHistory() {
     ['action', DEF_ACTIONS],
     ['msg', DEF_CHECK_MSGS]
   ];
-  const CK_LABEL = { place: '📍 地点', action: '✨ 在做什么', msg: '💬 说的话' };
+  const CK_LABEL = { place: '地点', action: '在做什么', msg: '说的话' };
   let ckTab = 'place';
   function renderCheckinCards() {
     // 顶部分类 tab
@@ -513,30 +483,50 @@ function renderCheckinHistory() {
   }
   renderCheckinCards();
 
-  // ================= 音乐收藏同步 =================
-  function renderMusicFavs() {
-    const el = document.getElementById('music-favs');
-    if (!el) return;
+  // ================= 桌面第二页补充：今日备忘 / 今天的心情 / 本周日常 =================
+  // 备忘/心情保存时写入历史（主页展示全部记录）
+  function pushHist(key, text) {
     try {
-      const f = JSON.parse(store.get('music-favs') || '[]');
-      el.textContent = f.length ? f.join('\n') : '暂无收藏歌曲';
+      const list = JSON.parse(store.get(key) || '[]');
+      list.unshift({ text: text, ts: Date.now() });
+      if (list.length > 200) list.length = 200;
+      store.set(key, JSON.stringify(list));
     } catch (e) {}
   }
-  window.toggleMusicFav = function (name) {
-    try {
-      let f = JSON.parse(store.get('music-favs') || '[]');
-      const idx = f.indexOf(name);
-      if (idx >= 0) f.splice(idx, 1);
-      else f.push(name);
-      store.set('music-favs', JSON.stringify(f));
-      renderMusicFavs();
-      return idx < 0;
-    } catch (e) { return false; }
-  };
-  window.musicFavState = function (name) {
-    try {
-      const f = JSON.parse(store.get('music-favs') || '[]');
-      return f.indexOf(name) >= 0;
-    } catch (e) { return false; }
-  };
+  const memoEl = document.getElementById('memo-text');
+  if (memoEl) {
+    const saved = store.get('memo');
+    if (saved) memoEl.textContent = saved;
+    memoEl.addEventListener('click', () => {
+      if (window.openModal) {
+        window.openModal('今日备忘', memoEl.textContent === '点这里记一句话' ? '' : memoEl.textContent, (v) => {
+          const val = (v || '').trim();
+          if (val) { memoEl.textContent = val; store.set('memo', val); pushHist('memo-history', val); }
+        });
+      }
+    });
+  }
+  const moodEl = document.getElementById('today-mood-text');
+  if (moodEl) {
+    const saved = store.get('today-mood');
+    if (saved) moodEl.textContent = saved;
+    moodEl.addEventListener('click', () => {
+      if (window.openModal) {
+        const moods = ['开心', '平静', '想你', '忙碌', '困', '充实', '温柔'];
+        window.openModal('今天的心情', '', (v) => {
+          const val = (v || '').trim();
+          if (val) { moodEl.textContent = val; store.set('today-mood', val); pushHist('mood-history', val); }
+        }, { pills: moods.map(m => ({ label: m, value: m })), pill: store.get('today-mood') || '' });
+      }
+    });
+  }
+  const weekEl = document.getElementById('week-days');
+  if (weekEl) {
+    const names = ['日', '一', '二', '三', '四', '五', '六'];
+    const now = new Date();
+    const todayIdx = now.getDay();
+    weekEl.innerHTML = names.map((n, i) =>
+      '<div class="week-day' + (i === todayIdx ? ' today' : '') + '"><b>' + (i === todayIdx ? '今' : n) + '</b>' + (i === todayIdx ? now.getDate() : n) + '</div>'
+    ).join('');
+  }
 })();

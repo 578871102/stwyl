@@ -197,6 +197,8 @@
   // img：可选，消息里附带换的头像图片
   function chatSystem(text, img) {
     if (window.chatAddSystem) window.chatAddSystem(text, { img: img });
+    // 记录：联系人主动换头像（写入记录页，含头像缩略图）
+    if (window.addAvatarRecord) window.addAvatarRecord(img);
   }
   // 弹窗 + 聊天消息：换头像邀请的回应（消息带换的头像图片）
   function replyInvite(accepted, img) {

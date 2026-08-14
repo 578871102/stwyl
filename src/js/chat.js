@@ -17,18 +17,34 @@
   function loadMsgs() {
     try { msgs = JSON.parse(store.get('chat-msgs') || '[]'); } catch (e) { msgs = []; }
     if (!Array.isArray(msgs)) msgs = [];
-    // 旧版换头像消息统一迁移为新文案：
-    // 「宝宝 更换了头像」→「我 更换了 宝宝 的头像」（只匹配旧格式，迁移后不再命中）
-    const pName = store.get('lbl-partner') || 'TA';
-    const myName = store.get('lbl-user') || '我';
-    let migrated = false;
+    // 注意：换头像消息不做文案迁移——
+    // 「昵称 更换了头像」是联系人自己换的头像（avatar-lib 自动随机/手动切换），
+    // 「我 更换了 TA 的头像」是"我"给联系人换头像，两者都要保留原样
+  // 旧消息迁移：来电消息里的铃铛图标 → 电话图标（历史消息的图标数据不会自动变）
+  {
+    const bellSvg = '<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v3M4.2 4.2l2.2 2.2M2 12h3M19 12h3M4.2 19.8l2.2-2.2M17.6 17.6l2.2 2.2"/><path d="M12 6a6 6 0 016 6v4h-3v-4a3 3 0 00-6 0v4H6v-4a6 6 0 016-6z"/><path d="M9 20h6"/></svg>';
+    const telSvg = '<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>';
+    let iconMigrated = false;
     msgs.forEach(r => {
-      if (r && r.special === 'poke' && typeof r.text === 'string' && /^.+ 更换了头像$/.test(r.text)) {
-        r.text = myName + ' 更换了 ' + pName + ' 的头像';
-        migrated = true;
+      if (r && typeof r.text === 'string' && r.text.indexOf(bellSvg) >= 0) {
+        r.text = r.text.split(bellSvg).join(telSvg);
+        iconMigrated = true;
       }
     });
-    if (migrated) saveMsgs();
+    if (iconMigrated) saveMsgs();
+  }
+  // 旧消息迁移：来信提示里的 ✉️ emoji → 信封 SVG（历史消息的 emoji 不会自动变）
+  {
+    const envSvg = '<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>';
+    let envMigrated = false;
+    msgs.forEach(r => {
+      if (r && r.special === 'poke' && typeof r.text === 'string') {
+        const t = r.text.replace(/✉️\s*/g, '').replace(/✉\s*/g, '');
+        if (t !== r.text) { r.text = envSvg + t; envMigrated = true; }
+      }
+    });
+    if (envMigrated) saveMsgs();
+  }
     // 旧消息补时间戳（仅一次，保证每条都有精确到秒的时间）
     let changed = false;
     msgs.forEach(r => { if (r && !r.ts) { r.ts = Date.now(); changed = true; } });
@@ -68,17 +84,19 @@
   function showTyping() {
     if (!typingEl) return;
     typingOn = true;
-    if (chatVisible()) typingEl.hidden = false;
-    // 消息区底部留出空间，避免输入中提示压住最后一条消息的头像/时间轴
-    const cb = document.getElementById('chat-body');
-    if (cb) cb.classList.add('typing-on');
+    if (chatVisible()) {
+      typingEl.hidden = false;
+      // 给消息区底部留出提示位，避免「正在输入」遮挡最后一条消息
+      const cb = document.getElementById('chat-body');
+      if (cb) cb.classList.add('typing-active');
+    }
   }
   function hideTyping() {
     if (!typingEl) return;
     typingOn = false;
     typingEl.hidden = true;
     const cb = document.getElementById('chat-body');
-    if (cb) cb.classList.remove('typing-on');
+    if (cb) cb.classList.remove('typing-active');
   }
 
   // ---- 概率工具 ----
@@ -121,12 +139,14 @@
     const p = (n) => (n < 10 ? '0' + n : '' + n);
     return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
   }
-  function quoteHtml(q) {
+  function quoteHtml(q, side) {
+    // side = 被引用消息的发送方（'out'=我发，'in'=TA发）
+    const who = side === 'out' ? (store.get('lbl-user') || '我') : (store.get('lbl-partner') || 'TA');
     if (typeof q === 'string' && q.indexOf('data:') === 0) {
-      // 引用图片（表情包）缩略图：实显，不透明
-      return '<div style="font-size:11px;border-left:2px solid currentColor;padding-left:8px;margin-bottom:4px"><img class="msg-quote-img" src="' + q + '" alt="图片"></div>';
+      // 引用图片（表情包）缩略图
+      return '<div class="msg-quote"><span class="msg-quote-label">引用 ' + who + '</span><img class="msg-quote-img" src="' + q + '" alt="图片"></div>';
     }
-    return '<div style="font-size:11px;opacity:.55;border-left:2px solid currentColor;padding-left:8px;margin-bottom:4px">' + q + '</div>';
+    return '<div class="msg-quote"><span class="msg-quote-label">引用 ' + who + '</span><span class="msg-quote-text">' + String(q || '').replace(/</g, '&lt;') + '</span></div>';
   }
   function bindToggle(b, side) {
     const who = side === 'out' ? '我' : '对方';
@@ -255,34 +275,73 @@
       // 已读不回：保留正常聊天气泡
       b.innerHTML = '<span style="opacity:.5;font-size:12px">已读不回</span>';
     } else if (rec.type === 'sticker' || rec.type === 'image') {
-      // 图片表情消息：气泡样式与文字消息一致（用 CSS 变量气泡色）
+      // 表情包：小图；图片：大图可点击查看
       b.style.padding = '6px';
       b.style.background = '';
       b.style.border = '';
       b.style.boxShadow = '';
-      b.innerHTML = '<img class="msg-img" src="' + rec.text + '" alt="表情">';
+      b.innerHTML = rec.type === 'image'
+        ? '<img class="msg-img msg-img-big" src="' + rec.text + '" alt="图片">'
+        : '<img class="msg-img msg-img-sm" src="' + rec.text + '" alt="表情">';
+      if (rec.type === 'image') {
+        b.querySelector('.msg-img-big').addEventListener('click', () => { if (window.viewChatImage) window.viewChatImage(rec.text); });
+      }
     } else if (rec.retracted) {
       b.dataset.orig = rec.orig || rec.text;
       b.innerHTML = '<span style="opacity:.6;font-size:12px;cursor:pointer">' + (rec.side === 'out' ? '我' : '对方') + '撤回了一条消息</span>';
       bindToggle(b, rec.side);
     } else if (rec.parts && rec.parts.length) {
       // 组合消息：文字 + 图片/表情（同一气泡内，图片网格 + 文字）
-      const imgs = rec.parts.filter(p => p.k === 'img').map(p => p.v);
+      // 图片 → 大图可点击；表情包 → 小图（sub 字段区分，旧数据按图片处理）
+      const imgs = rec.parts.filter(p => p.k === 'img').map(p => p);
       const textPart = rec.parts.filter(p => p.k === 'text').map(p => p.v).join(' ');
       let inner = '';
       if (imgs.length) {
         inner += '<div class="msg-parts-imgs' + (imgs.length > 1 ? ' multi' : '') + '">' +
-          imgs.map(src => '<img class="msg-img" src="' + src + '" alt="图片">').join('') + '</div>';
+          imgs.map(p => {
+            const isSticker = p.sub === 'sticker';
+            return '<img class="msg-img' + (isSticker ? ' msg-img-sm' : ' msg-img-big') + '" src="' + p.v + '" alt="' + (isSticker ? '表情' : '图片') + '">';
+          }).join('') + '</div>';
       }
       if (textPart) {
         inner += '<span style="opacity:.85;word-break:break-word">' + textPart.replace(/</g, '&lt;') + '</span>';
       }
       b.innerHTML = rec.quote
-        ? quoteHtml(rec.quote) + inner
+        ? quoteHtml(rec.quote, rec.qside) + inner
         : inner;
+      // 组合消息里的图片（大图）可点击查看
+      b.querySelectorAll('.msg-img-big').forEach(img => {
+        img.addEventListener('click', () => { if (window.viewChatImage) window.viewChatImage(img.src); });
+      });
+    } else if (rec.retractedSegs && rec.retractedSegs.length) {
+      // ★ 字卡级局部撤回：正文隐藏被撤段，下方胶囊可展开查看
+      const segs = splitCardSegs(rec.text);
+      const rcs = rec.retractedSegs || [];
+      let segHtml = '';
+      for (let i = 0; i < segs.length; i++) {
+        if (!rcs.some(r => r.idx === i)) {
+          if (segHtml) segHtml += ' ';
+          segHtml += String(segs[i]).replace(/</g, '&lt;');
+        }
+      }
+      let sub = '';
+      rcs.forEach(r => { sub += '<div style="padding:2px 0">（已撤回）' + String(r.text || '').replace(/</g, '&lt;') + '</div>'; });
+      b.innerHTML = (rec.quote ? quoteHtml(rec.quote, rec.qside) : '') +
+        '<span style="opacity:.85;word-break:break-word">' + (segHtml || '…') + '</span>' +
+        '<div style="margin-top:6px;text-align:left">' +
+        '<span class="msg-poke-seg" data-rc="1">' + (rec.side === 'out' ? '我' : '对方') + '撤回了 ' + rcs.length + ' 条字卡 ▾</span>' +
+        '<div class="msg-poke-seg-detail" style="display:none">' + sub + '</div>' +
+        '</div>';
+      const tip = b.querySelector('.msg-poke-seg');
+      if (tip) {
+        tip.addEventListener('click', () => {
+          const d = tip.nextElementSibling;
+          if (d) d.style.display = d.style.display === 'block' ? 'none' : 'block';
+        });
+      }
     } else {
       b.innerHTML = rec.quote
-        ? quoteHtml(rec.quote) + '<span style="opacity:.85">' + rec.text + '</span>'
+        ? quoteHtml(rec.quote, rec.qside) + '<span style="opacity:.85">' + rec.text + '</span>'
         : '<span style="opacity:.85">' + rec.text + '</span>';
     }
     // 恢复情绪字卡（持久化）：所有字卡包进一个 .msg-moods 容器，
@@ -290,16 +349,27 @@
     if (rec.mood && rec.mood.length) {
       const mm = document.createElement('div');
       mm.className = 'msg-moods';
-      rec.mood.forEach(md => {
+      rec.mood.forEach((md, mi) => {
+        // 局部撤回：被撤的情绪字卡不显示
+        if (rec.retractedMood && rec.retractedMood.indexOf(mi) >= 0) return;
         if (md.tag === '交流意图') {
           mm.innerHTML += '<div class="msg-mood msg-intent"><span class="msg-mood-tag">' + md.tag + '</span><span>' + md.label + '</span></div>';
         } else {
           mm.innerHTML += '<div class="msg-mood"><span class="msg-mood-tag">' + md.tag + '</span><span>' + md.label + '</span></div>';
         }
       });
-      b.appendChild(mm);
+      if (mm.children.length) b.appendChild(mm);
     }
     fillAvatar(av, rec.side === 'out' ? 'avatar-user' : 'avatar-partner');
+    // 点击联系人消息左侧头像 → 打开拍一拍半框，对 TA 使用拍一拍
+    if (rec.side === 'in') {
+      av.style.cursor = 'pointer';
+      av.title = '对 TA 拍一拍';
+      av.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openPokeCard();
+      });
+    }
     if (rec.side === 'in' || rec.side === 'out') m.dataset.idx = msgs.length - 1;
     body.appendChild(m);
     body.scrollTop = body.scrollHeight;
@@ -433,19 +503,84 @@
     }
   };
   // 撤回：更新记录 + DOM（点击可查看原文）
-  function retractMsg(msgEl, side) {
-    const b = msgEl.querySelector('.msg-bubble');
-    if (!b) return;
-    const idx = parseInt(msgEl.dataset.idx, 10);
-    if (!isNaN(idx) && msgs[idx]) {
-      msgs[idx].retracted = true;
-      msgs[idx].orig = b.innerHTML;
-      saveMsgs();
-    }
-    b.dataset.orig = b.innerHTML;
-    b.innerHTML = '<span style="opacity:.6;font-size:12px;cursor:pointer">' + (side === 'out' ? '我' : '对方') + '撤回了一条消息</span>';
-    bindToggle(b, side);
+function retractMsg(msgEl, side) {
+  const b = msgEl.querySelector('.msg-bubble');
+  if (!b) return;
+  const idx = parseInt(msgEl.dataset.idx, 10);
+  if (!isNaN(idx) && msgs[idx]) {
+    msgs[idx].retracted = true;
+    msgs[idx].orig = b.innerHTML;
+    saveMsgs();
   }
+  b.dataset.orig = b.innerHTML;
+  b.innerHTML = '<span style="opacity:.6;font-size:12px;cursor:pointer">' + (side === 'out' ? '我' : '对方') + '撤回了一条消息</span>';
+  bindToggle(b, side);
+}
+
+// ★ 字卡级局部撤回（仿星言）：按标点/空格/换行把消息文本拆成多个「字卡段」，
+// 联系人可只撤回其中 1~3 个段，正文隐藏被撤段，下方胶囊可展开查看撤了什么
+function splitCardSegs(text) {
+  const out = [];
+  let cur = '';
+  const str = String(text || '');
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+    cur += ch;
+    if (ch === '。' || ch === '！' || ch === '？' || ch === '；' || ch === ';' || ch === '!' || ch === '?' || ch === '\n' || ch === ',' || ch === '，' || ch === ' ') {
+      if (cur.trim()) out.push(cur.trim());
+      cur = '';
+    }
+  }
+  if (cur.trim()) out.push(cur.trim());
+  if (out.length < 2 && str.trim()) out = [str.trim()];
+  return out;
+}
+// 局部撤回：优先撤文本字卡段；文本单段则撤一条情绪/心意/意图字卡；都没有才整条撤回
+function partialRetractMsg(msgEl, side) {
+  const idx = parseInt(msgEl.dataset.idx, 10);
+  const rec = (idx >= 0 && msgs[idx]) ? msgs[idx] : null;
+  if (!rec || rec.retracted || rec.parts) { retractMsg(msgEl, side); return; }
+  const segs = splitCardSegs(rec.text);
+  if (segs.length > 1) {
+    rec.retractedSegs = rec.retractedSegs || [];
+    const remain = [];
+    for (let i = 0; i < segs.length; i++) {
+      if (!rec.retractedSegs.some(r => r.idx === i)) remain.push(i);
+    }
+    if (remain.length) {
+      const n = 1 + Math.floor(Math.random() * Math.min(remain.length, 3));
+      const k = Math.min(n, remain.length);
+      for (let r = 0; r < k; r++) {
+        const si = remain.splice(Math.floor(Math.random() * remain.length), 1)[0];
+        rec.retractedSegs.push({ text: segs[si], idx: si });
+      }
+      saveMsgs();
+      // 重建该条消息 DOM（沿用 renderMsg 渲染局部撤回样式）
+      const m = renderMsg(rec);
+      m.dataset.idx = idx;
+      if (msgEl.parentNode) msgEl.parentNode.replaceChild(m, msgEl);
+      return;
+    }
+  }
+  // 无多段文本：撤一条情绪/心意/意图字卡
+  if (rec.mood && rec.mood.length) {
+    rec.retractedMood = rec.retractedMood || [];
+    const remain = [];
+    for (let i = 0; i < rec.mood.length; i++) {
+      if (rec.retractedMood.indexOf(i) < 0) remain.push(i);
+    }
+    if (remain.length) {
+      const pick = remain[Math.floor(Math.random() * remain.length)];
+      rec.retractedMood.push(pick);
+      saveMsgs();
+      const m = renderMsg(rec);
+      m.dataset.idx = idx;
+      if (msgEl.parentNode) msgEl.parentNode.replaceChild(m, msgEl);
+      return;
+    }
+  }
+  retractMsg(msgEl, side);
+}
 
   // 按概率生成回复文本
   function genReplyText(c) {
@@ -493,6 +628,10 @@
           replyOnce(c, quote);
           // 还有下一条时继续显示「正在输入」
           if (i < count - 1) showTyping();
+          // 最后一条回复完成后：音乐 TA 可能请求一起听歌（延后 2 秒）
+          if (i === count - 1) {
+            setTimeout(() => { if (window.maybeMusicRequest) window.maybeMusicRequest(); }, 2000);
+          }
         }, i * randInt(1200, 2800));
       }
     }, delay);
@@ -500,15 +639,19 @@
   // 单条回复：生成内容 + 发送 + 收藏/情绪/撤回 附带逻辑（供普通回复与「让对方继续说」共用）
   function replyOnce(c, quote) {
     const rep = genOneReply(c);
-    const m = addIn(rep.text, { quote: quote, type: rep.type, parts: rep.parts });
+    // 引用我的消息：quote 是我发的文本，qside='out'（我发）
+    const m = addIn(rep.text, { quote: quote, qside: 'out', type: rep.type, parts: rep.parts });
     // TA 收藏夹：联系人有概率（30%）收藏我发的最新一条消息（独立于情绪系统，任何回复后判定）
     if (lastMineText && Math.random() * 100 < 30) {
       const fav = getFav();
-      // 图片/表情按 dataURL 识别类型，避免收藏时按文本存导致显示超长乱码
-      const favType = lastMineText.indexOf('data:') === 0 ? 'image' : 'text';
-      fav.push({ side: 'out', text: lastMineText, type: favType, ts: Date.now(), by: 'ta' });
-      saveFav(fav);
-      setTimeout(() => toast('TA 收藏了你的一条消息'), 1200);
+      // 同一条内容不重复收藏（已收藏过则跳过）
+      if (!fav.some(f => f.side === 'out' && f.text === lastMineText)) {
+        // 图片/表情按 dataURL 识别类型，避免收藏时按文本存导致显示超长乱码
+        const favType = lastMineText.indexOf('data:') === 0 ? 'image' : 'text';
+        fav.push({ side: 'out', text: lastMineText, type: favType, ts: Date.now(), by: 'ta' });
+        saveFav(fav);
+        setTimeout(() => toast('TA 收藏了你的一条消息'), 1200);
+      }
     }
     // 情绪系统触发链（星言完整版）：文字回复和表情包回复都会触发
     if (rep.type === 'text' || rep.type === 'sticker' || rep.type === 'image') {
@@ -547,7 +690,8 @@
     }
     if (hit(c['rc-prob'])) {
       setTimeout(() => {
-        retractMsg(m, 'in');
+        // ★ 字卡级局部撤回（仿星言）：多段文本/情绪卡优先局部撤回，否则整条撤回
+        partialRetractMsg(m, 'in');
         if (hit(c['rc-refix'])) {
           showTyping();
           setTimeout(() => { hideTyping(); replyOnce(c, null); }, 600);
@@ -562,6 +706,7 @@
     setTimeout(() => {
       hideTyping();
       replyOnce(c, null);
+      setTimeout(() => { if (window.maybeMusicRequest) window.maybeMusicRequest(); }, 2000);
     }, 500);
   };
   // 点击顶部联系人昵称：让对方继续说（绑定复用顶部已声明的 pname）
@@ -580,7 +725,7 @@
   }
   let lastMineText = '';
 
-  // 生成一条回复文本：拼字卡命中 → 多卡空格拼接；否则单卡（默认字卡按概率混入）
+  // 生成一条回复文本：每条消息多字卡回复命中 → 多卡空格拼接；否则单卡（默认字卡按概率混入）
   function genOneReply(c) {
     const pool = getPool();
     let t, type = 'text';
@@ -612,13 +757,14 @@
       if (w) t += ' ' + w;
     }
     // 联系人也可组合发送：按概率附加 1 张表情包/图片到同一条消息（图片池来自自定义字卡媒体）
+    // 表情包 → 小图 sub:'sticker'；图片 → 大图 sub:'image'
     const parts = [{ k: 'text', v: t }];
     if (hit(c['sticker-prob'] || 0)) {
       const st = (window.getMediaCards && window.getMediaCards('sticker')) || [];
-      if (st.length) parts.push({ k: 'img', v: st[Math.floor(Math.random() * st.length)] });
+      if (st.length) parts.push({ k: 'img', v: st[Math.floor(Math.random() * st.length)], sub: 'sticker' });
     } else if (hit(c['image-prob'] || 0)) {
       const im = (window.getMediaCards && window.getMediaCards('image')) || [];
-      if (im.length) parts.push({ k: 'img', v: im[Math.floor(Math.random() * im.length)] });
+      if (im.length) parts.push({ k: 'img', v: im[Math.floor(Math.random() * im.length)], sub: 'image' });
     }
     return { text: t, type: 'text', parts: parts.length > 1 ? parts : null };
   }
@@ -847,37 +993,19 @@
   bindTaNow('more-curious-now', () => { if (window.triggerTaCuriousNow) window.triggerTaCuriousNow(); });
   bindTaNow('more-roast-now', () => { if (window.triggerTaRoastNow) window.triggerTaRoastNow(); });
 
-  // ---- 帮我决定（星言版：输入问题 + 选项，随机决定）----
+  // ---- 帮我决定（完整版：是/否/半对 + 自定义选项 + 思考时间 + 历史记录，参考 @FelixFelicis）----
   const moreDecide = document.getElementById('more-decide');
   if (moreDecide) {
     moreDecide.addEventListener('click', (e) => {
       e.stopPropagation();
       if (morePanel) morePanel.hidden = true;
-      if (window.openModal) {
-        // 第一步：输入问题
-        window.openModal('帮我决定 · 你的纠结', '', (q) => {
-          const question = (q || '').trim() || '这个决定';
-          // 第二步：输入选项（默认 是/否/半对）
-          if (window.openModal) {
-            window.openModal('帮我决定 · 选项（逗号分隔）', '是,否,半对', (optsRaw) => {
-              const opts = String(optsRaw || '').split(/[,，]/).map(x => x.trim()).filter(Boolean);
-              if (!opts.length) opts.push('是', '否');
-              const pick = opts[Math.floor(Math.random() * opts.length)];
-              // 第三步：显示结果
-              if (window.openModal) {
-                window.openModal('帮我决定', '', () => {}, {
-                  noInput: true,
-                  staticText: '问题：' + question + '\n\n我的建议：\n' + pick
-                });
-              }
-            }, { textarea: true, textareaPlaceholder: '是,否,半对\n或自定义选项，逗号分隔' });
-          }
-        }, { textarea: true, textareaPlaceholder: '例如：我今晚该吃火锅吗？' });
-      }
+      if (window.openDecision) window.openDecision();
+      else toast('帮我决定加载失败');
     });
   }
 
-  // ---- 邀请TA（星言版：发送邀请 → TA 接受/拒绝/未回应）----
+  // ---- 邀请TA（完整版：发送邀请卡片 → TA 必回答 接受/拒绝/未回应）----
+  // 记录到「邀请/问问历史」（主页提问记录页展示）
   const moreInvite = document.getElementById('more-invite');
   if (moreInvite) {
     moreInvite.addEventListener('click', (e) => {
@@ -887,33 +1015,45 @@
         window.openModal('邀请TA · 想邀请TA做什么？', '', (v) => {
           const content = (v || '').trim();
           if (!content) return;
+          // 我的邀请：居中卡片
           addRec({ side: 'out', text: '邀请：' + content, special: 'invite' });
           if (window.logFish) window.logFish();
+          // 记录等待状态（联系人回答后补写答案）
+          const histKey = 'invite-ask-history';
+          const recTs = Date.now();
           setTimeout(() => {
             const roll = Math.random();
             const name = store.get('lbl-partner') || 'TA';
-            if (roll < 0.55) {
+            let status, reply = null;
+            if (roll < 0.6) {
+              status = '接受';
               addRec({ side: 'in', text: name + ' 接受了你的邀请', special: 'invite-reply' });
-              setTimeout(() => {
-                const acc = ['好，我答应你。', '可以呀。', '我陪你。', '走吧。', '嗯，陪你。'][Math.floor(Math.random() * 5)];
-                addIn(acc);
-              }, 800);
+              reply = ['好，我答应你。', '可以呀。', '我陪你。', '走吧。', '嗯，陪你。'][Math.floor(Math.random() * 5)];
+              setTimeout(() => addIn(reply), 800);
             } else if (roll < 0.85) {
+              status = '拒绝';
               addRec({ side: 'in', text: name + ' 拒绝了你的邀请', special: 'invite-reply' });
-              setTimeout(() => {
-                const rej = ['这次不行。', '下次吧。', '抱歉。', '今天不方便。'][Math.floor(Math.random() * 4)];
-                addIn(rej);
-              }, 800);
+              reply = ['这次不行。', '下次吧。', '抱歉。', '今天不方便。'][Math.floor(Math.random() * 4)];
+              setTimeout(() => addIn(reply), 800);
             } else {
+              status = '未回应';
               addRec({ side: 'in', text: name + ' 暂时没有回应', special: 'invite-reply' });
             }
+            // 写入历史（含答案）
+            try {
+              const list = JSON.parse(store.get(histKey) || '[]');
+              list.unshift({ type: 'invite', q: content, a: reply || status, ts: recTs });
+              if (list.length > 200) list.length = 200;
+              store.set(histKey, JSON.stringify(list));
+            } catch (err) {}
+            if (window.renderAskRecords) window.renderAskRecords();
           }, 1500 + Math.random() * 2500);
         }, { textarea: true, textareaPlaceholder: '例如：一起睡觉' });
       }
     });
   }
 
-  // ---- 问问TA（星言版：提问 → TA 回答）----
+  // ---- 问问TA（完整版：发送提问卡片 → TA 必回答）----
   const moreAsk = document.getElementById('more-ask');
   if (moreAsk) {
     moreAsk.addEventListener('click', (e) => {
@@ -923,49 +1063,86 @@
         window.openModal('问问TA · 你的问题', '', (q) => {
           const question = (q || '').trim();
           if (!question) return;
+          // 我的提问：居中卡片
           addRec({ side: 'out', text: '问：' + question, special: 'ask' });
           if (window.logFish) window.logFish();
+          const recTs = Date.now();
           setTimeout(() => {
-            const defs = ['嗯嗯', '我想想…', '应该吧', '好呀', '我陪你', '可以的', '那挺好呀', '我觉得可以', '听你的'];
+            const defs = ['嗯嗯', '我想想…', '应该吧', '好呀', '我陪你', '可以的', '那挺好呀', '我觉得可以', '听你的', '当然可以', '我很乐意'];
             const text = defs[Math.floor(Math.random() * defs.length)];
             addIn(text);
+            // 写入历史（含答案）
+            try {
+              const list = JSON.parse(store.get('invite-ask-history') || '[]');
+              list.unshift({ type: 'ask', q: question, a: text, ts: recTs });
+              if (list.length > 200) list.length = 200;
+              store.set('invite-ask-history', JSON.stringify(list));
+            } catch (err) {}
+            if (window.renderAskRecords) window.renderAskRecords();
           }, 1500 + Math.random() * 2500);
         }, { textarea: true, textareaPlaceholder: '例如：周末要不要一起去看电影？' });
       }
     });
   }
 
-  // ---- 搜索聊天记录（星言版：搜索全部历史消息）----
-  const moreSearch = document.getElementById('more-search');
-  if (moreSearch) {
-    moreSearch.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (morePanel) morePanel.hidden = true;
-      if (window.openModal) {
-        window.openModal('搜索聊天记录', '', (kw) => {
-          const q = (kw || '').trim();
-          if (!q) return;
-          const results = msgs.filter(m => m.text && typeof m.text === 'string' && m.text.indexOf(q) >= 0);
-          if (window.openModal) {
-            if (!results.length) {
-              window.openModal('搜索聊天记录', '', () => {}, {
-                noInput: true,
-                staticText: '没有找到包含「' + q + '」的消息'
-              });
-            } else {
-              const lines = results.slice(0, 10).map(m =>
-                (m.side === 'out' ? '我：' : (store.get('lbl-partner') || 'TA') + '：') + m.text
-              ).join('\n');
-              window.openModal('搜索聊天记录 · ' + results.length + ' 条', '', () => {}, {
-                noInput: true,
-                staticText: lines + (results.length > 10 ? '\n… 还有 ' + (results.length - 10) + ' 条' : '')
-              });
+// ---- 搜索聊天记录（完整版：搜索全部历史，结果可点击跳转定位） ----
+const moreSearch = document.getElementById('more-search');
+if (moreSearch) {
+  moreSearch.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (morePanel) morePanel.hidden = true;
+    if (!window.openModal) return;
+    window.openModal('搜索聊天记录', '', (kw) => {
+      const q = (kw || '').trim();
+      if (!q) return;
+      loadMsgs(); // 确保拿到最新消息数据
+      const partnerName = store.get('lbl-partner') || 'TA';
+      const myName = store.get('lbl-user') || '我';
+      const results = [];
+      msgs.forEach((m, i) => {
+        if (!m || m.special) return; // 系统提示类不参与搜索
+        let txt = typeof m.text === 'string' ? m.text : '';
+        if (m.askQuestion) txt += ' ' + m.askQuestion;
+        if (m.choiceQuestion) txt += ' ' + m.choiceQuestion;
+        if (m.curiousQuestion) txt += ' ' + m.curiousQuestion;
+        if (m.roastText) txt += ' ' + m.roastText;
+        if (txt.indexOf(q) >= 0) results.push({ i: i, m: m, txt: txt });
+      });
+      if (!results.length) {
+        if (window.openModal) {
+          window.openModal('搜索聊天记录', '', () => {}, { noInput: true, staticText: '没有找到包含「' + q + '」的消息' });
+        }
+        return;
+      }
+      // 结果列表（复用 tc-mask 弹层）：发送者 + 时间 + 内容，点击跳转聊天定位
+      let html = '<div style="font-size:11px;color:var(--muted);margin-bottom:8px">共 ' + results.length + ' 条 · 点击结果跳转到对应消息</div>';
+      results.slice(0, 50).forEach(r => {
+        const isImg = r.txt.indexOf('data:') === 0;
+        const label = (isImg ? '[图片] ' : '') + r.txt.slice(0, 40) + (r.txt.length > 40 ? '…' : '');
+        const who = r.m.side === 'out' ? myName : partnerName;
+        const time = r.m.ts ? fmtTime(r.m.ts) : '';
+        html += '<div class="tc-listitem" data-sidx="' + r.i + '" style="cursor:pointer">' +
+          '<div class="tc-li-top"><span class="tc-li-q">' + who + '：' + String(label).replace(/</g, '&lt;') + '</span><span class="tc-li-time">' + time + '</span></div></div>';
+      });
+      if (results.length > 50) html += '<div class="ta-empty">还有 ' + (results.length - 50) + ' 条…</div>';
+      if (window.openTCPanel) {
+        window.openTCPanel('搜索聊天记录', html);
+        document.querySelectorAll('#tc-body .tc-listitem').forEach(el => {
+          el.addEventListener('click', () => {
+            document.getElementById('tc-mask').hidden = true;
+            const idx = Number(el.dataset.sidx);
+            const target = body.querySelector('.msg[data-idx="' + idx + '"]');
+            if (target) {
+              target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              target.classList.add('highlight');
+              setTimeout(() => target.classList.remove('highlight'), 2200);
             }
-          }
+          });
         });
       }
     });
-  }
+  });
+}
 
   // ---- 通话（星言版：拨号 → 接通/未接，模拟通话）----
   const moreCall = document.getElementById('more-call');
@@ -973,17 +1150,14 @@
     moreCall.addEventListener('click', (e) => {
       e.stopPropagation();
       if (morePanel) morePanel.hidden = true;
-      const name = store.get('lbl-partner') || 'TA';
-      addRec({ side: 'out', text: '拨打 ' + name + ' 语音通话', special: 'call' });
-      if (window.logFish) window.logFish();
-      setTimeout(() => {
-        const connected = Math.random() > 0.3;
-        if (connected) {
-          addRec({ side: 'in', text: '通话已接通 · ' + (5 + Math.floor(Math.random() * 30)) + ' 秒', special: 'call-reply' });
-        } else {
-          addRec({ side: 'in', text: name + ' 未接听', special: 'call-reply' });
-        }
-      }, 2000 + Math.random() * 2000);
+      // 完整通话系统：拨打弹窗 → 忙线/拒绝/接通 → 接通后小框
+      if (window.placeCall) window.placeCall();
+      else {
+        // 降级：旧逻辑
+        const name = store.get('lbl-partner') || 'TA';
+        addRec({ side: 'out', text: '拨打 ' + name + ' 语音通话', special: 'call' });
+        if (window.logFish) window.logFish();
+      }
     });
   }
   if (pokeClose) pokeClose.addEventListener('click', (e) => { e.stopPropagation(); closePokeCard(); });
@@ -1077,9 +1251,14 @@
       } else if (act === 'fav') {
         if (rec) {
           const fav = getFav();
-          fav.push({ side: rec.side, text: rec.text, type: rec.type || 'text', ts: rec.ts || Date.now(), by: 'me', mood: (rec.mood || []).slice() });
-          saveFav(fav);
-          toast('已收藏到我的收藏');
+          // 同一条内容不重复收藏
+          if (fav.some(f => f.side === rec.side && f.text === rec.text)) {
+            toast('已收藏过这条消息');
+          } else {
+            fav.push({ side: rec.side, text: rec.text, type: rec.type || 'text', ts: rec.ts || Date.now(), by: 'me', mood: (rec.mood || []).slice() });
+            saveFav(fav);
+            toast('已收藏到我的收藏');
+          }
         }
         closeMsgActions();
       } else if (act === 'retract') {
@@ -1136,6 +1315,8 @@
       tabsEl.querySelectorAll('.fav-tab').forEach(t => t.classList.toggle('sel', t.dataset.tab === favTab));
     }
     const list = favTab === 'ta' ? taFav : myFav;
+    // 最新收藏在上
+    list.sort((a, b) => (b.ts || 0) - (a.ts || 0));
     const title = favTab === 'ta' ? partnerName + ' 的收藏' : myName + ' 的收藏';
     const empty = favTab === 'ta' ? 'TA 还没有收藏' : '暂无收藏';
     // 组标题
@@ -1270,9 +1451,25 @@
         d.className = 'emoji-item';
         d.innerHTML = '<img src="' + src + '" alt="表情">';
         d.addEventListener('click', () => {
-          // 表情包加入待发送草稿（可与文字/图片组合成一条消息）
-          draftImgs.push(src);
-          renderDraft();
+          const input = document.getElementById('chat-input');
+          const text = (input ? input.value : '').trim();
+          if (text) {
+            // 输入栏有文字：文字 + 表情包合并为一条气泡直接发送（表情包小图）
+            lastMineText = text;
+            const rec = { side: 'out', text: text, parts: [{ k: 'text', v: text }, { k: 'img', v: src, sub: 'sticker' }] };
+            addRec(rec);
+            if (input) input.value = '';
+            renderDraft();
+            if (window.logFish) window.logFish();
+            scheduleReply();
+          } else {
+            // 无文字：直接发送表情包（气泡消息）
+            lastMineText = src;
+            const rec = { side: 'out', text: src, type: 'sticker', parts: [{ k: 'img', v: src }] };
+            addRec(rec);
+            if (window.logFish) window.logFish();
+            scheduleReply();
+          }
           closeEmojiPanel();
         });
         grid.appendChild(d);
@@ -1368,7 +1565,8 @@
     const parts = [];
     const t = (text || '').trim();
     if (t) parts.push({ k: 'text', v: t });
-    draftImgs.forEach(src => parts.push({ k: 'img', v: src }));
+    // 插入的图片：大图（可点击查看）
+    draftImgs.forEach(src => parts.push({ k: 'img', v: src, sub: 'image' }));
     return parts;
   }
   const addMsg = (text) => {

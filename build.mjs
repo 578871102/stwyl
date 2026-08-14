@@ -10,8 +10,8 @@ const root = dirname(fileURLToPath(import.meta.url));
 const read = (p) => readFileSync(join(root, 'src', p), 'utf8');
 
 // 按顺序拼接样式 / 脚本（顺序即生效顺序）
-const cssFiles = ['base.css', 'home.css', 'chat.css', 'setting.css', 'tabbar.css'];
-const jsFiles = ['idb.js', 'clock.js', 'tabs.js', 'desktop-slider.js', 'personalize.js', 'chat.js', 'chatcard.js', 'chat-settings.js', 'reply-settings.js', 'default-cards-data.js', 'default-cards.js', 'mood-followup-data.js', 'mood-reply-cards.js', 'music-player.js', 'calendar.js', 'divination.js', 'avatar-lib.js', 'ta-ask.js', 'bg-keep.js', 'p2-features.js'];
+const cssFiles = ['base.css', 'home.css', 'chat-main.css', 'chat-pages.css', 'setting.css', 'tabbar.css'];
+const jsFiles = ['idb.js', 'clock.js', 'tabs.js', 'desktop-slider.js', 'quote-cards.js', 'personalize.js', 'chat.js', 'chatcard.js', 'chat-settings.js', 'reply-settings.js', 'default-cards-data.js', 'default-cards.js', 'mood-followup-data.js', 'mood-reply-cards.js', 'music-player.js', 'calendar.js', 'divination.js', 'avatar-lib.js', 'ta-ask.js', 'bg-keep.js', 'records.js', 'call.js', 'mail.js', 'feed.js', 'p2-features.js', 'decision.js', 'data-backup.js'];
 
 let html = read('template.html');
 const styles = cssFiles.map(f => read(join('css', f))).join('\n');
