@@ -2,10 +2,7 @@
 // 聊天壁纸、双方气泡颜色/文字颜色、字体大小、气泡框大小（localStorage 持久化）
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
   const root = document.documentElement;
   const body = document.getElementById('chat-body');
   if (!body) return;
@@ -118,7 +115,7 @@
   const csBgRm = row('cs-bg-remove');
   if (csBgRm) {
     csBgRm.addEventListener('click', () => {
-      try { localStorage.removeItem(uid + ':cs-bg'); } catch (e) {}
+      store.remove('cs-bg');
       applySettings();
     });
   }
@@ -239,7 +236,7 @@
         inp.click();
       });
       document.getElementById('cs-font-clear').addEventListener('click', () => {
-        try { localStorage.removeItem(uid + ':' + FONT_KEY); } catch (e) {}
+        store.remove(FONT_KEY);
         document.getElementById('tc-mask').hidden = true;
         applyFont();
         toast('已恢复默认字体');
@@ -327,7 +324,7 @@
       const ta = document.getElementById('cs-css-input');
       if (ta) ta.value = store.get(CSS_KEY) || '';
       document.getElementById('cs-css-clear').addEventListener('click', () => {
-        try { localStorage.removeItem(uid + ':' + CSS_KEY); } catch (e) {}
+        store.remove(CSS_KEY);
         document.getElementById('tc-mask').hidden = true;
         applyCss();
         toast('已清空气泡样式');

@@ -8,10 +8,7 @@
   if (!list || !tabsWrap || !enabledEl) return;
 
   const uid = 'xy-home-v2';
-  const ls = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const ls = window.xyStore(uid);
   // 默认值（对应星言 defaultCommonOverallProb=30, probs 各30）
   function getEnabled() { const v = ls.get('dc-enabled'); return v === null ? true : v === '1'; }
   function getOverall() { const v = ls.get('dc-overall'); return v === null ? 30 : Number(v); }

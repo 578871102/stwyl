@@ -7,10 +7,7 @@
   if (!body) return;
 
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
 
   // ---- 消息存储 ----
   let msgs = [];
@@ -1064,7 +1061,7 @@ function partialRetractMsg(msgEl, side) {
       if (moreTabAsk) moreTabAsk.classList.toggle('sel', !fun);
       if (moreGridFun) moreGridFun.hidden = !fun;
       if (moreGridAsk) moreGridAsk.hidden = fun;
-      try { localStorage.setItem(uid + ':more-tab', fun ? 'fun' : 'ask'); } catch (e) {}
+      store.set('more-tab', fun ? 'fun' : 'ask');
     }
     if (moreTabFun) moreTabFun.addEventListener('click', (e) => { e.stopPropagation(); applyMoreTab('fun'); });
     if (moreTabAsk) moreTabAsk.addEventListener('click', (e) => { e.stopPropagation(); applyMoreTab('ask'); });
@@ -1074,7 +1071,7 @@ function partialRetractMsg(msgEl, side) {
       if (morePanel.hidden) {
         let tab = 'fun';
         try {
-          const saved = localStorage.getItem(uid + ':more-tab');
+          const saved = store.get('more-tab');
           if (saved === 'ask') tab = 'ask';
         } catch (err) {}
         applyMoreTab(tab);
@@ -1826,7 +1823,7 @@ function partialRetractMsg(msgEl, side) {
 
   // 记住最后打开的表情包分类（localStorage 持久化，刷新后仍在）
   function saveEmojiGroupPref() {
-    try { localStorage.setItem(uid + ':emoji-last', JSON.stringify({ ta: emojiCurGroup, mine: myCurGroup })); } catch (e) {}
+    store.set('emoji-last', JSON.stringify({ ta: emojiCurGroup, mine: myCurGroup }));
   }
   (function () {
     try {
@@ -1845,11 +1842,9 @@ function partialRetractMsg(msgEl, side) {
   }
   function myEmojiSave() {
     const data = JSON.stringify(myGroups);
-    let ok = true;
-    try { localStorage.setItem(MYE_KEY, data); }
-    catch (e) { ok = false; try { localStorage.removeItem(MYE_KEY); } catch (e2) {} }
-    try { if (window.idbSet) window.idbSet(MYE_KEY, data); } catch (e) {}
-    return ok;
+    // 统一走适配层：localStorage 快照 + IndexedDB 权威（配额满也不丢，启动自动恢复）
+    store.set('my-emoji-groups', data);
+    return true;
   }
   // 启动恢复：IDB 内容更多优先（与字卡库一致，防配额丢数据）
   (function () {

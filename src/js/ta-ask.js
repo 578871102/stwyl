@@ -6,10 +6,7 @@
 // 管理页可"让TA现在问一次"（无视冷却/概率），并可清空问答历史
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
   const KEY = 'ta-ask';
 
   // 默认题库（4 分类，与星言一致 + 两个世界）

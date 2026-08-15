@@ -4,10 +4,7 @@
 // 上传/清空有成功/失败提示（toast）
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
   const page = document.getElementById('page-chat-settings');
   if (!page) return;
 
@@ -231,7 +228,7 @@
       } else {
         // 拒绝：头像换回原来那张（原本没自定义过头像则恢复默认图标）
         if (before) store.set('avatar-partner', before);
-        else { try { localStorage.removeItem(uid + ':avatar-partner'); } catch (e) {} }
+        else { store.remove('avatar-partner'); }
         applyAvatarImg(before);
         renderGrid();
         replyInvite(false, before || null); // 消息带换回的头像图

@@ -638,7 +638,7 @@
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.5.90</div>
+      <div class="ver">Mochi 字卡传讯 v3.5.92</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -1727,13 +1727,15 @@
       <div class="poke-card chat-search" id="chat-search" hidden>
         <div class="poke-card-head">
           <span>搜索聊天记录</span>
-          <button class="poke-card-close" id="chat-search-close">✕</button>
+          <span class="poke-card-head-actions">
+            <button class="chat-search-new" id="chat-search-new" title="跳转最新消息">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px"><path d="M12 4v16M6 14l6 6 6-6"/></svg>最新
+            </button>
+            <button class="poke-card-close" id="chat-search-close">✕</button>
+          </span>
         </div>
         <div class="chat-search-bar">
           <input class="chat-search-input" id="chat-search-input" placeholder="输入关键词搜索聊天记录…">
-          <button class="chat-search-new" id="chat-search-new" title="跳转最新消息">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px"><path d="M12 4v16M6 14l6 6 6-6"/></svg>最新
-          </button>
           <button class="chat-search-go" id="chat-search-go">搜索</button>
         </div>
         <div class="poke-card-scroll chat-search-results" id="chat-search-results"></div>
@@ -1869,7 +1871,7 @@
             <span>邀请TA</span>
           </button>
           <button class="more-item" id="more-ask" title="问问TA">
-            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 11.5a3 3 0 114 2.8c-.8.6-1 1.2-1 2.2"/><path d="M12 19.5h.01"/></svg></span>
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.6a2.4 2.4 0 114.8.4c0 1.7-2.4 2.1-2.4 3.3"/><path d="M12 16.7h.01"/></svg></span>
             <span>问问TA</span>
           </button>
           <button class="more-item" id="more-search" title="搜索聊天记录">
@@ -1889,7 +1891,7 @@
             <span>头像互动</span>
           </button>
           <button class="more-item" id="more-divine" title="占卜">
-            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10.3" r="6.6"/><path d="M12 8l.75 1.95 1.95.75-1.95.75L12 13.4l-.75-1.95-1.95-.75 1.95-.75z"/><path d="M9.4 7.9l-.5 1.4"/><path d="M6.4 16.8h11.2M7.8 20.2h8.4"/></svg></span>
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M12 8.5l1.15 2.4 2.4 1.15-2.4 1.15L12 15.6l-1.15-2.4-2.4-1.15 2.4-1.15z"/></svg></span>
             <span>占卜</span>
           </button>
         </div>

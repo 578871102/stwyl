@@ -334,6 +334,10 @@
   display:flex; align-items:center; justify-content:space-between;
   font-size:15px; font-weight:700; margin-bottom:10px;
 }
+.poke-card-head-actions {
+  display:flex; align-items:center; gap:8px; margin-left:auto;
+}
+.poke-card-head-actions .chat-search-new { padding:5px 12px; }
 .poke-card-close {
   width:28px; height:28px; border-radius:50%; border:none; cursor:pointer;
   background:rgba(0,0,0,.06); color:#666; font-size:14px;

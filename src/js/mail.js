@@ -2,10 +2,7 @@
 // 收信（TA 主动来信）/ 寄信 / 回信；信纸样式展示；聊天里插入写信/回信/来信提示
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
   const KEY = 'mail-letters';
   const TITLES = ['好久不见', '最近还好吗', '想你了', '给你写了封信', '深夜随想', '一些想说的话'];
   let mtab = 'in';

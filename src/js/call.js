@@ -5,10 +5,7 @@
 // 概率（与星言一致）：来电 8% / 接通 70% / 忙线 15% / 拒绝 15% / 对方挂断 0.01%（每 30 秒检查）
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
   const CALL = { incoming: 8, pickup: 70, busy: 15, reject: 15, hangup: 0.01 };
   // 从回复设置读取（可自由调整概率，与星言通话设置一致）
   function callCfg() {
@@ -84,7 +81,7 @@
   const callBgRm = document.getElementById('call-bg-remove');
   if (callBgRm) {
     callBgRm.addEventListener('click', () => {
-      try { localStorage.removeItem(uid + ':' + CALL_BG_KEY); } catch (e) {}
+      store.remove(CALL_BG_KEY);
       applyCallBg();
       toast('已恢复默认通话背景');
     });

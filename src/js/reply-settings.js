@@ -2,10 +2,7 @@
 // 存储 + 设置页 stepper/开关交互；暴露 window.replyCfg 给聊天回复逻辑使用
 (function () {
   const uid = 'xy-home-v2';
-  const ls = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const ls = window.xyStore(uid);
 
   // 全部概率/参数项（与星言 speedSettings 对应）
   const DEFAULTS = {

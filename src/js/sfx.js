@@ -6,10 +6,7 @@
 // 未设置的音效不播放；设置后对应事件自动播放
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
   function toast(msg) {
     let t = document.getElementById('cc-toast');
     if (!t) { t = document.createElement('div'); t.id = 'cc-toast'; document.body.appendChild(t); }
@@ -71,7 +68,7 @@
     const btn = document.getElementById(id);
     if (!btn) return;
     btn.addEventListener('click', () => {
-      try { localStorage.removeItem(uid + ':' + KEYS[key]); } catch (e) {}
+      store.remove(KEYS[key]);
       updateVals();
       toast(NAMES[key] + '音效已清除');
     });

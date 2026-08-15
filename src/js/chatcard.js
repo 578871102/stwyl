@@ -9,10 +9,7 @@
   if (!list || !tabsWrap) return;
 
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
 
   // 内置分组数据（key: 类型 -> [分组名, 字卡数组]）
   const BUILTIN = {
@@ -89,19 +86,8 @@
     }
   })();
   function saveGroups(groups) {
-    const data = JSON.stringify(groups);
-    // v3.5.28：写入失败不再静默吞掉——超配额时移除失效键，
-    // 数据经 IndexedDB 兜底，下次启动自动恢复完整内容
-    let ok = true;
-    try {
-      localStorage.setItem(uid + ':cc-groups', data);
-    } catch (e) {
-      ok = false;
-      try { localStorage.removeItem(uid + ':cc-groups'); } catch (e2) {}
-    }
-    // IndexedDB 权威持久（不丢任何字卡记录；不占 localStorage 配额）
-    if (window.idbSet) window.idbSet(uid + ':cc-groups', data);
-    return ok;
+    // 统一走适配层：localStorage 快照 + IndexedDB 权威（配额满也不丢，启动自动恢复）
+    store.set('cc-groups', JSON.stringify(groups));
   }
 
   let groups = loadGroups();
@@ -610,11 +596,10 @@
                 g[1].push(val);
                 done++;
                 if (done === files.length) {
-                  const saved = saveGroups(groups);
+                  saveGroups(groups);
                   renderGroupsBar();
                   render();
-                  if (!saved) toast('存储空间不足：图片已用备用存储，刷新后恢复。请删除不用的表情包释放空间');
-                  else toast('已上传 ' + done + ' 个' + (cur === 'voice' ? '音频' : '图片'));
+                  toast('已上传 ' + done + ' 个' + (cur === 'voice' ? '音频' : '图片'));
                 }
               };
               if (cur === 'voice') process(reader.result);

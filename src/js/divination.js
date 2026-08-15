@@ -7,6 +7,7 @@
 
   let mode = 'tarot';
   let count = 3;
+  const store = window.xyStore('xy-home-v2');
 
   // ---- 塔罗 22 张大阿卡纳（矢量图标 + 牌名 + 正逆位寓意 + 详细解读）----
   const TAROT = [
@@ -198,7 +199,7 @@
     const n = storeName();
     return n ? n : '';
   }
-  function storeName() { try { return localStorage.getItem('xy-home-v2:lbl-partner') || ''; } catch (e) { return ''; } }
+  function storeName() { try { return store.get('lbl-partner') || ''; } catch (e) { return ''; } }
   function buildSummary(cards, mode, question) {
     let line = '';
     if (mode === 'tarot') {
@@ -218,10 +219,18 @@
     }
     return line;
   }
-  // ---- 占卜记录（保存全部历史）----
-  const HIST_KEY = 'divine-history';
-  function histLoad() { try { return JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); } catch (e) { return []; } }
-  function histSave(list) { try { localStorage.setItem(HIST_KEY, JSON.stringify(list)); } catch (e) {} }
+  // ---- 占卜记录（保存全部历史；IndexedDB 权威，localStorage 快照） ----
+  function histLoad() {
+    let list = [];
+    try { list = JSON.parse(store.get('divine-history') || '[]'); } catch (e) { list = []; }
+    // 旧版本裸键迁移（v3.5.92 前历史存无前缀键，一次性搬入适配层）
+    if (!Array.isArray(list) || !list.length) {
+      try { list = JSON.parse(localStorage.getItem('divine-history') || '[]'); } catch (e) { list = []; }
+      if (Array.isArray(list) && list.length) store.set('divine-history', JSON.stringify(list));
+    }
+    return Array.isArray(list) ? list : [];
+  }
+  function histSave(list) { store.set('divine-history', JSON.stringify(list)); }
   function fmtDT(ts) {
     const d = new Date(ts);
     const p = (n) => (n < 10 ? '0' + n : '' + n);

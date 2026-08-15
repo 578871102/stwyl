@@ -849,6 +849,10 @@ html,body { overflow-x:hidden;
   display:flex; align-items:center; justify-content:space-between;
   font-size:15px; font-weight:700; margin-bottom:10px;
 }
+.poke-card-head-actions {
+  display:flex; align-items:center; gap:8px; margin-left:auto;
+}
+.poke-card-head-actions .chat-search-new { padding:5px 12px; }
 .poke-card-close {
   width:28px; height:28px; border-radius:50%; border:none; cursor:pointer;
   background:rgba(0,0,0,.06); color:#666; font-size:14px;
@@ -2761,7 +2765,7 @@ html,body { overflow-x:hidden;
       <div class="splash-title">mochi 摸鱼字卡</div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">部署于 2026-08-15 14:28</div>
+      <div class="splash-ver" id="splash-ver">部署于 2026-08-15 14:55</div>
     </div>
   </div>
   <div class="phone">
@@ -3372,7 +3376,7 @@ html,body { overflow-x:hidden;
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.5.90</div>
+      <div class="ver">Mochi 字卡传讯 v3.5.92</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -4461,13 +4465,15 @@ html,body { overflow-x:hidden;
       <div class="poke-card chat-search" id="chat-search" hidden>
         <div class="poke-card-head">
           <span>搜索聊天记录</span>
-          <button class="poke-card-close" id="chat-search-close">✕</button>
+          <span class="poke-card-head-actions">
+            <button class="chat-search-new" id="chat-search-new" title="跳转最新消息">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px"><path d="M12 4v16M6 14l6 6 6-6"/></svg>最新
+            </button>
+            <button class="poke-card-close" id="chat-search-close">✕</button>
+          </span>
         </div>
         <div class="chat-search-bar">
           <input class="chat-search-input" id="chat-search-input" placeholder="输入关键词搜索聊天记录…">
-          <button class="chat-search-new" id="chat-search-new" title="跳转最新消息">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;vertical-align:-2px"><path d="M12 4v16M6 14l6 6 6-6"/></svg>最新
-          </button>
           <button class="chat-search-go" id="chat-search-go">搜索</button>
         </div>
         <div class="poke-card-scroll chat-search-results" id="chat-search-results"></div>
@@ -4603,7 +4609,7 @@ html,body { overflow-x:hidden;
             <span>邀请TA</span>
           </button>
           <button class="more-item" id="more-ask" title="问问TA">
-            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 11.5a3 3 0 114 2.8c-.8.6-1 1.2-1 2.2"/><path d="M12 19.5h.01"/></svg></span>
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.6a2.4 2.4 0 114.8.4c0 1.7-2.4 2.1-2.4 3.3"/><path d="M12 16.7h.01"/></svg></span>
             <span>问问TA</span>
           </button>
           <button class="more-item" id="more-search" title="搜索聊天记录">
@@ -4623,7 +4629,7 @@ html,body { overflow-x:hidden;
             <span>头像互动</span>
           </button>
           <button class="more-item" id="more-divine" title="占卜">
-            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10.3" r="6.6"/><path d="M12 8l.75 1.95 1.95.75-1.95.75L12 13.4l-.75-1.95-1.95-.75 1.95-.75z"/><path d="M9.4 7.9l-.5 1.4"/><path d="M6.4 16.8h11.2M7.8 20.2h8.4"/></svg></span>
+            <span class="mi-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M12 8.5l1.15 2.4 2.4 1.15-2.4 1.15L12 15.6l-1.15-2.4-2.4-1.15 2.4-1.15z"/></svg></span>
             <span>占卜</span>
           </button>
         </div>
@@ -4878,30 +4884,102 @@ html,body { overflow-x:hidden;
     })).catch(() => false);
   };
 
+  // 存储适配层：各模块统一用它读写（接口与原 store 一致）。
+  // IndexedDB 是权威持久层；localStorage 只是快速快照（配额满/隐私模式写失败也不丢数据——
+  // 启动时从 IDB 恢复）；内存缓存兜底 localStorage 缺失的键。
+  // v3.5.92：大键（>200KB，如头像池/壁纸/朋友圈背景等图片 dataURL）只写 IndexedDB，
+  //   不写 localStorage——手机 5MB 配额不再被几十 MB 图片撑爆，大数据全进 IDB（配额大得多）
+  const LS_BIG_LIMIT = 200 * 1024;
+  let memoryCache = null;
+  window.xyStore = function (prefix) {
+    return {
+      get(k) {
+        const key = prefix + ':' + k;
+        try { const v = localStorage.getItem(key); if (v !== null) return v; } catch (e) {}
+        if (memoryCache && key in memoryCache) return memoryCache[key];
+        return null;
+      },
+      set(k, v) {
+        const key = prefix + ':' + k;
+        if (memoryCache) memoryCache[key] = v;
+        // 大键跳过 localStorage（只进 IDB + 内存缓存）
+        const big = typeof v === 'string' && v.length > LS_BIG_LIMIT;
+        if (!big) {
+          try { localStorage.setItem(key, v); } catch (e) {}
+        } else {
+          try { localStorage.removeItem(key); } catch (e) {}
+        }
+        try { if (window.idbSet) window.idbSet(key, v); } catch (e) {}
+      },
+      remove(k) {
+        const key = prefix + ':' + k;
+        if (memoryCache) delete memoryCache[key];
+        try { localStorage.removeItem(key); } catch (e) {}
+        try { if (window.idbDelete) window.idbDelete(key); } catch (e) {}
+      }
+    };
+  };
+
   // 恢复：从 IndexedDB 读回 localStorage 缺失的键（初始化时调用）
   window.idbRestore = function (uidPrefix) {
+    if (!window.idbGetAllKeys) return;
     window.idbGetAllKeys().then(keys => {
       if (!keys || !keys.length) return;
+      let refilled = 0;
       keys.forEach(k => {
         if (k.indexOf(uidPrefix) !== 0) return;
-        // 音乐文件只存 IndexedDB（体积大），不回填到 localStorage（会撑爆配额）
+        // 音乐文件只存 IndexedDB（体积大），不进内存缓存、不回填 localStorage（会撑爆配额）
         if (k.indexOf(uidPrefix + 'music-file:') === 0) return;
         window.idbGet(k).then(v => {
           if (v === undefined || v === null) return;
+          const str = typeof v === 'string' ? v : JSON.stringify(v);
+          if (!memoryCache) memoryCache = {};
+          memoryCache[k] = str;
+          // v3.5.92：大键（>200KB 图片 dataURL）只留 IDB + 内存缓存，不回填 localStorage
+          if (str.length > LS_BIG_LIMIT) return;
           try {
             // 仅当 localStorage 无此键，或 IndexedDB 数据更新时覆盖
             if (!localStorage.getItem(k)) {
-              localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v));
+              localStorage.setItem(k, str);
+              refilled++;
             }
           } catch (e) {}
         });
       });
+      // 数据在 IndexedDB、localStorage 缺失 → 回填后刷新一次，让模块读到完整数据
+      // （防循环：sessionStorage 标记只允许一次；回填失败不刷新）
+      setTimeout(() => {
+        if (refilled > 0 && !sessionStorage.getItem('xy-idb-refilled')) {
+          try { sessionStorage.setItem('xy-idb-refilled', '1'); } catch (e) {}
+          location.reload();
+        }
+      }, 800);
     });
   };
   // v3.5.24：启动时自动从 IndexedDB 回填 localStorage 缺失的键。
   // 之前只定义不调用——手机端导入/配额异常导致 localStorage 部分丢失后，IndexedDB 里的
   // 聊天记录/字卡/查岗等备份永远不会回填。现在初始化自动跑一次。
   try { window.idbRestore('xy-home-v2:'); } catch (e) {}
+
+  // v3.5.92：一次性迁移——localStorage 里 >200KB 的旧大键（头像池/壁纸/朋友圈背景等）
+  // 移入 IndexedDB 并从 localStorage 删除（老用户升级后 LS 立刻瘦身，不再撑爆 5MB）
+  try {
+    if (!sessionStorage.getItem('xy-ls-big-migrated')) {
+      let moved = 0;
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k || k.indexOf('xy-home-v2:') !== 0) continue;
+        if (k.indexOf('xy-home-v2:music-file:') === 0) continue;
+        const v = localStorage.getItem(k);
+        if (v && v.length > LS_BIG_LIMIT) {
+          try { if (window.idbSet) window.idbSet(k, v); } catch (e) {}
+          try { localStorage.removeItem(k); } catch (e) {}
+          moved++;
+        }
+      }
+      if (moved > 0) { try { sessionStorage.setItem('xy-ls-big-migrated', '1'); } catch (e) {} }
+    }
+  } catch (e) {}
 })();
 
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
@@ -5032,10 +5110,7 @@ html,body { overflow-x:hidden;
 // 桌面「今日情话」每天从库中随机一句（自定义优先，未添加用默认库）
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
   const KEY = 'quote-cards';
 
   // 默认情话库（与桌面今日情话一致）
@@ -5147,10 +5222,7 @@ html,body { overflow-x:hidden;
 // 头像上传、签名、纪念日照片、手机背景、自定义图标、恋爱纪念日、每日打卡（localStorage 持久化）
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
 
   // 图片压缩后再存储：大幅缩小体积，本地存储容量更宽松（头像/图标 256px，背景/照片 1000px）
   function compressImage(dataUrl, maxSide) {
@@ -5416,7 +5488,7 @@ html,body { overflow-x:hidden;
       bgHome.classList.remove('has-bg');
       bgHome.style.backgroundImage = '';
     }
-    try { localStorage.removeItem(uid + ':phone-bg'); } catch (e) {}
+    store.remove('phone-bg');
     syncBgUI();
   };
   if (bgRow) {
@@ -5526,7 +5598,7 @@ html,body { overflow-x:hidden;
         window.openModal('图标已自定义', '', (v) => {
           if (v === '1') pickFile();
           if (v === '2') {
-            try { localStorage.removeItem(uid + ':app-icon-' + key); } catch (err) {}
+            store.remove('app-icon-' + key);
             if (ico && ico.dataset.orig) ico.innerHTML = ico.dataset.orig;
             toast('已恢复默认图标');
           }
@@ -5579,14 +5651,14 @@ html,body { overflow-x:hidden;
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
   function getFishLog() {
-    try { return JSON.parse(localStorage.getItem(uid + ':fish-log') || '[]'); } catch (e) { return []; }
+    try { return JSON.parse(store.get('fish-log') || '[]'); } catch (e) { return []; }
   }
   function logFish() {
     const list = getFishLog();
     const t = fishToday();
     if (list.indexOf(t) === -1) {
       list.push(t);
-      try { localStorage.setItem(uid + ':fish-log', JSON.stringify(list)); } catch (e) {}
+      store.set('fish-log', JSON.stringify(list));
     }
     updateFishDays();
   }
@@ -5605,7 +5677,7 @@ html,body { overflow-x:hidden;
       const list = getFishLog();
       if (list.indexOf(d) === -1) {
         list.push(d);
-        try { localStorage.setItem(uid + ':fish-log', JSON.stringify(list)); } catch (e) {}
+        store.set('fish-log', JSON.stringify(list));
         updateFishDays();
       }
     }
@@ -6183,10 +6255,7 @@ html,body { overflow-x:hidden;
   if (!body) return;
 
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
 
   // ---- 消息存储 ----
   let msgs = [];
@@ -7240,7 +7309,7 @@ function partialRetractMsg(msgEl, side) {
       if (moreTabAsk) moreTabAsk.classList.toggle('sel', !fun);
       if (moreGridFun) moreGridFun.hidden = !fun;
       if (moreGridAsk) moreGridAsk.hidden = fun;
-      try { localStorage.setItem(uid + ':more-tab', fun ? 'fun' : 'ask'); } catch (e) {}
+      store.set('more-tab', fun ? 'fun' : 'ask');
     }
     if (moreTabFun) moreTabFun.addEventListener('click', (e) => { e.stopPropagation(); applyMoreTab('fun'); });
     if (moreTabAsk) moreTabAsk.addEventListener('click', (e) => { e.stopPropagation(); applyMoreTab('ask'); });
@@ -7250,7 +7319,7 @@ function partialRetractMsg(msgEl, side) {
       if (morePanel.hidden) {
         let tab = 'fun';
         try {
-          const saved = localStorage.getItem(uid + ':more-tab');
+          const saved = store.get('more-tab');
           if (saved === 'ask') tab = 'ask';
         } catch (err) {}
         applyMoreTab(tab);
@@ -8002,7 +8071,7 @@ function partialRetractMsg(msgEl, side) {
 
   // 记住最后打开的表情包分类（localStorage 持久化，刷新后仍在）
   function saveEmojiGroupPref() {
-    try { localStorage.setItem(uid + ':emoji-last', JSON.stringify({ ta: emojiCurGroup, mine: myCurGroup })); } catch (e) {}
+    store.set('emoji-last', JSON.stringify({ ta: emojiCurGroup, mine: myCurGroup }));
   }
   (function () {
     try {
@@ -8021,11 +8090,9 @@ function partialRetractMsg(msgEl, side) {
   }
   function myEmojiSave() {
     const data = JSON.stringify(myGroups);
-    let ok = true;
-    try { localStorage.setItem(MYE_KEY, data); }
-    catch (e) { ok = false; try { localStorage.removeItem(MYE_KEY); } catch (e2) {} }
-    try { if (window.idbSet) window.idbSet(MYE_KEY, data); } catch (e) {}
-    return ok;
+    // 统一走适配层：localStorage 快照 + IndexedDB 权威（配额满也不丢，启动自动恢复）
+    store.set('my-emoji-groups', data);
+    return true;
   }
   // 启动恢复：IDB 内容更多优先（与字卡库一致，防配额丢数据）
   (function () {
@@ -8547,10 +8614,7 @@ function partialRetractMsg(msgEl, side) {
   if (!list || !tabsWrap) return;
 
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
 
   // 内置分组数据（key: 类型 -> [分组名, 字卡数组]）
   const BUILTIN = {
@@ -8627,19 +8691,8 @@ function partialRetractMsg(msgEl, side) {
     }
   })();
   function saveGroups(groups) {
-    const data = JSON.stringify(groups);
-    // v3.5.28：写入失败不再静默吞掉——超配额时移除失效键，
-    // 数据经 IndexedDB 兜底，下次启动自动恢复完整内容
-    let ok = true;
-    try {
-      localStorage.setItem(uid + ':cc-groups', data);
-    } catch (e) {
-      ok = false;
-      try { localStorage.removeItem(uid + ':cc-groups'); } catch (e2) {}
-    }
-    // IndexedDB 权威持久（不丢任何字卡记录；不占 localStorage 配额）
-    if (window.idbSet) window.idbSet(uid + ':cc-groups', data);
-    return ok;
+    // 统一走适配层：localStorage 快照 + IndexedDB 权威（配额满也不丢，启动自动恢复）
+    store.set('cc-groups', JSON.stringify(groups));
   }
 
   let groups = loadGroups();
@@ -9148,11 +9201,10 @@ function partialRetractMsg(msgEl, side) {
                 g[1].push(val);
                 done++;
                 if (done === files.length) {
-                  const saved = saveGroups(groups);
+                  saveGroups(groups);
                   renderGroupsBar();
                   render();
-                  if (!saved) toast('存储空间不足：图片已用备用存储，刷新后恢复。请删除不用的表情包释放空间');
-                  else toast('已上传 ' + done + ' 个' + (cur === 'voice' ? '音频' : '图片'));
+                  toast('已上传 ' + done + ' 个' + (cur === 'voice' ? '音频' : '图片'));
                 }
               };
               if (cur === 'voice') process(reader.result);
@@ -9303,10 +9355,7 @@ function partialRetractMsg(msgEl, side) {
 // 聊天壁纸、双方气泡颜色/文字颜色、字体大小、气泡框大小（localStorage 持久化）
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
   const root = document.documentElement;
   const body = document.getElementById('chat-body');
   if (!body) return;
@@ -9419,7 +9468,7 @@ function partialRetractMsg(msgEl, side) {
   const csBgRm = row('cs-bg-remove');
   if (csBgRm) {
     csBgRm.addEventListener('click', () => {
-      try { localStorage.removeItem(uid + ':cs-bg'); } catch (e) {}
+      store.remove('cs-bg');
       applySettings();
     });
   }
@@ -9540,7 +9589,7 @@ function partialRetractMsg(msgEl, side) {
         inp.click();
       });
       document.getElementById('cs-font-clear').addEventListener('click', () => {
-        try { localStorage.removeItem(uid + ':' + FONT_KEY); } catch (e) {}
+        store.remove(FONT_KEY);
         document.getElementById('tc-mask').hidden = true;
         applyFont();
         toast('已恢复默认字体');
@@ -9628,7 +9677,7 @@ function partialRetractMsg(msgEl, side) {
       const ta = document.getElementById('cs-css-input');
       if (ta) ta.value = store.get(CSS_KEY) || '';
       document.getElementById('cs-css-clear').addEventListener('click', () => {
-        try { localStorage.removeItem(uid + ':' + CSS_KEY); } catch (e) {}
+        store.remove(CSS_KEY);
         document.getElementById('tc-mask').hidden = true;
         applyCss();
         toast('已清空气泡样式');
@@ -9651,10 +9700,7 @@ function partialRetractMsg(msgEl, side) {
 // 存储 + 设置页 stepper/开关交互；暴露 window.replyCfg 给聊天回复逻辑使用
 (function () {
   const uid = 'xy-home-v2';
-  const ls = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const ls = window.xyStore(uid);
 
   // 全部概率/参数项（与星言 speedSettings 对应）
   const DEFAULTS = {
@@ -9801,10 +9847,7 @@ window.DEFAULT_CARD_DATA = {"main":[["生活碎片",["刚刚整理了一下东�
   if (!list || !tabsWrap || !enabledEl) return;
 
   const uid = 'xy-home-v2';
-  const ls = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const ls = window.xyStore(uid);
   // 默认值（对应星言 defaultCommonOverallProb=30, probs 各30）
   function getEnabled() { const v = ls.get('dc-enabled'); return v === null ? true : v === '1'; }
   function getOverall() { const v = ls.get('dc-overall'); return v === null ? 30 : Number(v); }
@@ -9953,10 +9996,7 @@ window.MOOD_FOLLOWUP_DATA = {"mood":[{"group":"喜悦与正向","weight":30,"car
 // 聊天回应：连接词 8 类，按回复特征选类
 (function () {
   const uid = 'xy-home-v2';
-  const ls = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const ls = window.xyStore(uid);
   const DATA = (window.MOOD_FOLLOWUP_DATA) || {};
   const W = DATA.weights || {};
 
@@ -10289,10 +10329,7 @@ window.getReplyCard = function () {
 // 歌单、听歌记录、TA 按概率请求一起听歌、歌曲结束 TA 可能接动作、悬浮小框可拖动
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
   function toast(msg) {
     let t = document.getElementById('cc-toast');
     if (!t) { t = document.createElement('div'); t.id = 'cc-toast'; document.body.appendChild(t); }
@@ -10353,7 +10390,8 @@ window.getReplyCard = function () {
     if (!playlists.some(p => p.id === 'spl_default')) {
       playlists.unshift({ id: 'spl_default', name: '默认歌单', createdAt: Date.now() });
     }
-    // 首次运行：往默认歌单里放几首网易云歌（已知歌名直接写入，其余异步自动识别）
+    // 首次运行：往默认歌单里放 2 首内置示例歌（本地合成旋律，不依赖任何外部链接，永不失效；
+    // 歌名异步自动识别）
     if (!library.length && !store.get('music-seed-done')) {
       const seeds = [
         { id: 2613048732, name: 'Moonlit Dream', artist: 'DLSS · shell（月光梦）', cover: 'https://p2.music.126.net/cXuoNwFzgFoQF7bGvC2mIQ==/109951169832660411.jpg' },
@@ -10363,7 +10401,8 @@ window.getReplyCard = function () {
       seeds.forEach((s, i) => {
         const id = 'sm_seed_' + Date.now() + '_' + i;
         ids.push(id);
-        library.push({ id: id, neteaseId: String(s.id), name: s.name || '网易云音乐-' + s.id, artist: s.artist || '', cover: s.cover || '', url: 'https://music.163.com/song/media/outer/url?id=' + s.id + '.mp3', source: 'url', duration: 0, playlistId: 'spl_default', addedAt: Date.now() });
+        library.push({ id: id, neteaseId: String(s.id), name: s.name || '示例旋律-' + (i + 1), artist: s.artist || '', cover: s.cover || '', url: '', source: 'local', duration: 0, playlistId: 'spl_default', addedAt: Date.now() });
+        genDemoAudio(i).then(d => { if (d) window.idbSet(uid + ':music-file:' + id, d); });
       });
       store.set('music-seed-done', '1');
       saveLibrary();
@@ -10380,6 +10419,74 @@ window.getReplyCard = function () {
         });
       });
     }
+    // v3.5.91：网易云外链播放已全面失效 → 检测老版本的种子歌曲（外链 URL），
+    // 自动替换为本地合成示例旋律，保证默认歌单能播放
+    library.forEach(m => {
+      if (m && m.neteaseId && (m.neteaseId === '2613048732' || m.neteaseId === '27538343') && m.url && m.url.indexOf('music.163.com') >= 0) {
+        const idx = m.neteaseId === '2613048732' ? 0 : 1;
+        m.source = 'local';
+        m.url = '';
+        const mid = m.id;
+        saveLibrary();
+        genDemoAudio(idx).then(d => {
+          if (d) {
+            window.idbSet(uid + ':music-file:' + mid, d);
+            toast('默认歌曲已改用内置示例旋律（网易云链接已失效）');
+          } else {
+            toast('内置示例旋律生成失败，请重新添加歌曲');
+          }
+          renderPage();
+        });
+      }
+    });
+  }
+
+  // ================= 内置示例旋律：本地合成（无版权、不联网、永不失效） =================
+  // 用 Web Audio 离线渲染一小段钢琴音色旋律，编码为 WAV dataURL 存入 IndexedDB
+  function genDemoAudio(idx) {
+    return new Promise((resolve) => {
+      try {
+        const AC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+        if (!AC) { resolve(''); return; }
+        const sr = 22050;
+        const ctx = new AC(1, sr * 14, sr);
+        // 两段简单旋律（第一首小星星式上行，第二首欢快式）
+        const notes = idx === 0
+          ? [523,523,587,587,659,659,587,523,523,587,587,659,659,587,659,698,784,784,698,698,659,659,587]
+          : [659,659,698,784,784,698,659,587,523,523,587,659,659,587,587,659,784,784,880,880,784,659,587];
+        let t = ctx.currentTime;
+        const dur = 0.42;
+        notes.forEach((f) => {
+          const osc = ctx.createOscillator();
+          const g = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = f;
+          g.gain.setValueAtTime(0, t);
+          g.gain.linearRampToValueAtTime(0.5, t + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+          osc.connect(g);
+          g.connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + dur + 0.05);
+          t += dur * 0.9;
+        });
+        ctx.startRendering().then((buf) => {
+          const ch = buf.getChannelData(0);
+          const n = ch.length;
+          const wav = new DataView(new ArrayBuffer(44 + n * 2));
+          const writeStr = (o, s) => { for (let i = 0; i < s.length; i++) wav.setUint8(o + i, s.charCodeAt(i)); };
+          writeStr(0, 'RIFF'); wav.setUint32(4, 36 + n * 2, true); writeStr(8, 'WAVE');
+          writeStr(12, 'fmt '); wav.setUint32(16, 16, true); wav.setUint16(20, 1, true); wav.setUint16(22, 1, true);
+          wav.setUint32(24, sr, true); wav.setUint32(28, sr * 2, true); wav.setUint16(32, 2, true); wav.setUint16(34, 16, true);
+          writeStr(36, 'data'); wav.setUint32(40, n * 2, true);
+          for (let i = 0; i < n; i++) wav.setInt16(44 + i * 2, Math.max(-1, Math.min(1, ch[i])) * 32767, true);
+          const bytes = new Uint8Array(wav.buffer);
+          let bin = '';
+          for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+          resolve('data:audio/wav;base64,' + btoa(bin));
+        }).catch(() => resolve(''));
+      } catch (e) { resolve(''); }
+    });
   }
 
   // ================= 网易云歌名/封面识别（多源兜底） =================
@@ -11495,10 +11602,7 @@ window.getReplyCard = function () {
 // 每次首次打开日历触发 TA 留言弹窗；美化毛玻璃、无 emoji、矢量图标
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
   const page = document.getElementById('page-calendar');
   if (!page) return;
 
@@ -11740,6 +11844,7 @@ window.getReplyCard = function () {
 
   let mode = 'tarot';
   let count = 3;
+  const store = window.xyStore('xy-home-v2');
 
   // ---- 塔罗 22 张大阿卡纳（矢量图标 + 牌名 + 正逆位寓意 + 详细解读）----
   const TAROT = [
@@ -11931,7 +12036,7 @@ window.getReplyCard = function () {
     const n = storeName();
     return n ? n : '';
   }
-  function storeName() { try { return localStorage.getItem('xy-home-v2:lbl-partner') || ''; } catch (e) { return ''; } }
+  function storeName() { try { return store.get('lbl-partner') || ''; } catch (e) { return ''; } }
   function buildSummary(cards, mode, question) {
     let line = '';
     if (mode === 'tarot') {
@@ -11951,10 +12056,18 @@ window.getReplyCard = function () {
     }
     return line;
   }
-  // ---- 占卜记录（保存全部历史）----
-  const HIST_KEY = 'divine-history';
-  function histLoad() { try { return JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); } catch (e) { return []; } }
-  function histSave(list) { try { localStorage.setItem(HIST_KEY, JSON.stringify(list)); } catch (e) {} }
+  // ---- 占卜记录（保存全部历史；IndexedDB 权威，localStorage 快照） ----
+  function histLoad() {
+    let list = [];
+    try { list = JSON.parse(store.get('divine-history') || '[]'); } catch (e) { list = []; }
+    // 旧版本裸键迁移（v3.5.92 前历史存无前缀键，一次性搬入适配层）
+    if (!Array.isArray(list) || !list.length) {
+      try { list = JSON.parse(localStorage.getItem('divine-history') || '[]'); } catch (e) { list = []; }
+      if (Array.isArray(list) && list.length) store.set('divine-history', JSON.stringify(list));
+    }
+    return Array.isArray(list) ? list : [];
+  }
+  function histSave(list) { store.set('divine-history', JSON.stringify(list)); }
   function fmtDT(ts) {
     const d = new Date(ts);
     const p = (n) => (n < 10 ? '0' + n : '' + n);
@@ -12089,10 +12202,7 @@ window.getReplyCard = function () {
 // 上传/清空有成功/失败提示（toast）
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
   const page = document.getElementById('page-chat-settings');
   if (!page) return;
 
@@ -12316,7 +12426,7 @@ window.getReplyCard = function () {
       } else {
         // 拒绝：头像换回原来那张（原本没自定义过头像则恢复默认图标）
         if (before) store.set('avatar-partner', before);
-        else { try { localStorage.removeItem(uid + ':avatar-partner'); } catch (e) {} }
+        else { store.remove('avatar-partner'); }
         applyAvatarImg(before);
         renderGrid();
         replyInvite(false, before || null); // 消息带换回的头像图
@@ -12381,10 +12491,7 @@ window.getReplyCard = function () {
 // 管理页可"让TA现在问一次"（无视冷却/概率），并可清空问答历史
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
   const KEY = 'ta-ask';
 
   // 默认题库（4 分类，与星言一致 + 两个世界）
@@ -13861,10 +13968,7 @@ window.openTCPanel = openTCPanel;
 // 后台通知：开启后，页面不在前台时收到 TA 的新消息会弹出浏览器通知。
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
   function toast(msg) {
     let t = document.getElementById('cc-toast');
     if (!t) {
@@ -14033,10 +14137,7 @@ window.openTCPanel = openTCPanel;
 // 桌面「主页」按钮进入；换头像/通话事件自动写入，完整展示
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
   function fmtDT(ts) {
     const d = new Date(ts);
     const p = (n) => (n < 10 ? '0' + n : '' + n);
@@ -14223,10 +14324,7 @@ window.openTCPanel = openTCPanel;
 // 概率（与星言一致）：来电 8% / 接通 70% / 忙线 15% / 拒绝 15% / 对方挂断 0.01%（每 30 秒检查）
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
   const CALL = { incoming: 8, pickup: 70, busy: 15, reject: 15, hangup: 0.01 };
   // 从回复设置读取（可自由调整概率，与星言通话设置一致）
   function callCfg() {
@@ -14302,7 +14400,7 @@ window.openTCPanel = openTCPanel;
   const callBgRm = document.getElementById('call-bg-remove');
   if (callBgRm) {
     callBgRm.addEventListener('click', () => {
-      try { localStorage.removeItem(uid + ':' + CALL_BG_KEY); } catch (e) {}
+      store.remove(CALL_BG_KEY);
       applyCallBg();
       toast('已恢复默认通话背景');
     });
@@ -14606,10 +14704,7 @@ window.openTCPanel = openTCPanel;
 // 收信（TA 主动来信）/ 寄信 / 回信；信纸样式展示；聊天里插入写信/回信/来信提示
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
   const KEY = 'mail-letters';
   const TITLES = ['好久不见', '最近还好吗', '想你了', '给你写了封信', '深夜随想', '一些想说的话'];
   let mtab = 'in';
@@ -14939,10 +15034,7 @@ window.openTCPanel = openTCPanel;
 // TA 会点赞/评论我的动态；我点赞/评论后 TA 有概率回应
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
   const KEY = 'feed-posts';
   function partnerName() { return store.get('lbl-partner') || 'TA'; }
   function partnerAv() { return store.get('avatar-partner') || ''; }
@@ -15947,10 +16039,7 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
 // v3.5.27：今日备忘/今天的心情历史双写 IndexedDB——导入备份覆盖 localStorage 后记录可从 IDB 回填
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
   // 备忘/心情历史：localStorage + IndexedDB 双写；启动时从 IDB 回填缺失键（导入/清空后不丢记录）
   function pushHist(key, text) {
     try {
@@ -16523,10 +16612,7 @@ function renderCheckinHistory() {
 // 功能参考：@FelixFelicis（9416318007）
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
   const HISTORY_KEY = 'decision-history';
   const SETTINGS_KEY = 'decision-settings';
 
@@ -16719,10 +16805,7 @@ function renderCheckinHistory() {
 // 未设置的音效不播放；设置后对应事件自动播放
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
   function toast(msg) {
     let t = document.getElementById('cc-toast');
     if (!t) { t = document.createElement('div'); t.id = 'cc-toast'; document.body.appendChild(t); }
@@ -16784,7 +16867,7 @@ function renderCheckinHistory() {
     const btn = document.getElementById(id);
     if (!btn) return;
     btn.addEventListener('click', () => {
-      try { localStorage.removeItem(uid + ':' + KEYS[key]); } catch (e) {}
+      store.remove(KEYS[key]);
       updateVals();
       toast(NAMES[key] + '音效已清除');
     });
@@ -16879,24 +16962,27 @@ function renderCheckinHistory() {
   }
 
   // 导出：localStorage + IndexedDB
+  // v3.5.91：大键（dataURL 图片类 >20KB）同时镜像进 idb——手机 5MB localStorage
+  // 装不下几十 MB 图片时，导入走 IndexedDB（配额大得多），localStorage 只写小键，不再丢数据
   async function doExport() {
     const data = { version: '1.0', app: 'mochi-zika', exportTime: new Date().toISOString(), ls: {}, idb: {} };
-    // localStorage：全部 xy-home-v2: 键（含 chat-msgs——v3.5.90 不再跳过：
-    // 聊天记录虽双写 IndexedDB，但异步写入可能失败/缺失，localStorage 版本必须打包兜底，
-    // 否则导出→导入会丢全部聊天记录）
     try {
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
         if (!k || k.indexOf(uid + ':') !== 0) continue;
-        data.ls[k] = localStorage.getItem(k);
+        const v = localStorage.getItem(k);
+        data.ls[k] = v;
+        // 大键镜像进 IDB（含聊天记录与图片类）
+        if (byteLen(v) > 20 * 1024) data.idb[k] = v;
       }
     } catch (e) {}
-    // IndexedDB：字卡 / 查岗 / 音乐文件等权威数据
+    // IndexedDB：音乐文件等权威数据
     if (window.idbGetAllKeys) {
       try {
         const keys = await window.idbGetAllKeys();
         for (const k of keys || []) {
           if (k.indexOf(uid + ':') !== 0) continue;
+          if (k in data.idb) continue; // 已在上面镜像
           const v = await window.idbGet(k);
           if (v !== undefined && v !== null) data.idb[k] = v;
         }
@@ -17011,18 +17097,14 @@ function renderCheckinHistory() {
       const sorted = entries.slice().sort((a, b) => b.len - a.len);
       for (const e of sorted) {
         if (budget + LS_HEADROOM <= quota) break;
-        // v3.5.90：兜底路径下（IDB 无 chat-msgs）聊天记录绝不丢
+        // 聊天记录绝不丢（v3.5.90：IDB 无 chat-msgs 时 localStorage 兜底）
         if (e.k === uid + ':chat-msgs') continue;
         budget -= e.len;
         dropped.push(e);
       }
-      if (budget + LS_HEADROOM > quota) {
-        // 丢弃大键后仍放不下 → 整体回滚，不写半个数据
-        rollback();
-        const mb = (total / 1048576).toFixed(1);
-        toast('手机存储空间不足（数据约 ' + mb + ' MB），已取消导入并保留原数据。可清理照片/音乐后重试。');
-        return;
-      }
+      // v3.5.91：不再整体取消——按配额丢弃超大图片类大键，其余数据全部写入。
+      // 手机 5MB 配额装不下几十 MB 图片是物理限制；跳过的大键有明确提示，
+      // 设置/昵称/聊天文字/字卡文字等小键保证完整恢复。
       const skipSet = {};
       dropped.forEach(e => { skipSet[e.k] = true; });
       let dropBytes = dropped.reduce((s, e) => s + e.len, 0);
@@ -17037,18 +17119,14 @@ function renderCheckinHistory() {
           writeFailed.push(e.k);
         }
       }
-      // 写入有失败 → 整体回滚
-      if (writeFailed.length) {
-        rollback();
-        toast('写入失败 ' + writeFailed.length + ' 项，已还原旧数据。请清理存储空间后重试。');
-        return;
-      }
+      // v3.5.91：写入失败不整体回滚——大部分数据已写入，失败项单独提示即可
 
-      // ---- 5. 汇总 + 提示（大键丢弃 / IDB 失败都有明确提示，不再静默丢数据） ----
+      // ---- 5. 汇总 + 提示（丢弃/写入失败都有明确提示，不再静默丢数据） ----
       const parts = [];
       if (idbOk) parts.push('音乐/字卡/查岗等大文件已恢复');
       else if (data.idb && Object.keys(data.idb).length) parts.push('⚠ IndexedDB 恢复失败，字卡/音乐/查岗等大文件可能缺失，建议重新导入');
       if (chatMoved) parts.push('聊天记录已存入 IndexedDB（不占浏览器小存储）');
+      if (writeFailed.length) parts.push(writeFailed.length + ' 项写入失败（存储空间满），已尝试尽量恢复其余数据');
       if (dropped.length) {
         const mb = (dropBytes / 1048576).toFixed(1);
         parts.push('存储容量有限，已跳过超大图片/音乐 ' + dropped.length + ' 项（约 ' + mb + ' MB，可在聊天/头像库中重新添加）');

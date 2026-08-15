@@ -3,10 +3,7 @@
 // 桌面「今日情话」每天从库中随机一句（自定义优先，未添加用默认库）
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
   const KEY = 'quote-cards';
 
   // 默认情话库（与桌面今日情话一致）

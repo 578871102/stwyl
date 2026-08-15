@@ -49,24 +49,27 @@
   }
 
   // 导出：localStorage + IndexedDB
+  // v3.5.91：大键（dataURL 图片类 >20KB）同时镜像进 idb——手机 5MB localStorage
+  // 装不下几十 MB 图片时，导入走 IndexedDB（配额大得多），localStorage 只写小键，不再丢数据
   async function doExport() {
     const data = { version: '1.0', app: 'mochi-zika', exportTime: new Date().toISOString(), ls: {}, idb: {} };
-    // localStorage：全部 xy-home-v2: 键（含 chat-msgs——v3.5.90 不再跳过：
-    // 聊天记录虽双写 IndexedDB，但异步写入可能失败/缺失，localStorage 版本必须打包兜底，
-    // 否则导出→导入会丢全部聊天记录）
     try {
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
         if (!k || k.indexOf(uid + ':') !== 0) continue;
-        data.ls[k] = localStorage.getItem(k);
+        const v = localStorage.getItem(k);
+        data.ls[k] = v;
+        // 大键镜像进 IDB（含聊天记录与图片类）
+        if (byteLen(v) > 20 * 1024) data.idb[k] = v;
       }
     } catch (e) {}
-    // IndexedDB：字卡 / 查岗 / 音乐文件等权威数据
+    // IndexedDB：音乐文件等权威数据
     if (window.idbGetAllKeys) {
       try {
         const keys = await window.idbGetAllKeys();
         for (const k of keys || []) {
           if (k.indexOf(uid + ':') !== 0) continue;
+          if (k in data.idb) continue; // 已在上面镜像
           const v = await window.idbGet(k);
           if (v !== undefined && v !== null) data.idb[k] = v;
         }
@@ -181,18 +184,14 @@
       const sorted = entries.slice().sort((a, b) => b.len - a.len);
       for (const e of sorted) {
         if (budget + LS_HEADROOM <= quota) break;
-        // v3.5.90：兜底路径下（IDB 无 chat-msgs）聊天记录绝不丢
+        // 聊天记录绝不丢（v3.5.90：IDB 无 chat-msgs 时 localStorage 兜底）
         if (e.k === uid + ':chat-msgs') continue;
         budget -= e.len;
         dropped.push(e);
       }
-      if (budget + LS_HEADROOM > quota) {
-        // 丢弃大键后仍放不下 → 整体回滚，不写半个数据
-        rollback();
-        const mb = (total / 1048576).toFixed(1);
-        toast('手机存储空间不足（数据约 ' + mb + ' MB），已取消导入并保留原数据。可清理照片/音乐后重试。');
-        return;
-      }
+      // v3.5.91：不再整体取消——按配额丢弃超大图片类大键，其余数据全部写入。
+      // 手机 5MB 配额装不下几十 MB 图片是物理限制；跳过的大键有明确提示，
+      // 设置/昵称/聊天文字/字卡文字等小键保证完整恢复。
       const skipSet = {};
       dropped.forEach(e => { skipSet[e.k] = true; });
       let dropBytes = dropped.reduce((s, e) => s + e.len, 0);
@@ -207,18 +206,14 @@
           writeFailed.push(e.k);
         }
       }
-      // 写入有失败 → 整体回滚
-      if (writeFailed.length) {
-        rollback();
-        toast('写入失败 ' + writeFailed.length + ' 项，已还原旧数据。请清理存储空间后重试。');
-        return;
-      }
+      // v3.5.91：写入失败不整体回滚——大部分数据已写入，失败项单独提示即可
 
-      // ---- 5. 汇总 + 提示（大键丢弃 / IDB 失败都有明确提示，不再静默丢数据） ----
+      // ---- 5. 汇总 + 提示（丢弃/写入失败都有明确提示，不再静默丢数据） ----
       const parts = [];
       if (idbOk) parts.push('音乐/字卡/查岗等大文件已恢复');
       else if (data.idb && Object.keys(data.idb).length) parts.push('⚠ IndexedDB 恢复失败，字卡/音乐/查岗等大文件可能缺失，建议重新导入');
       if (chatMoved) parts.push('聊天记录已存入 IndexedDB（不占浏览器小存储）');
+      if (writeFailed.length) parts.push(writeFailed.length + ' 项写入失败（存储空间满），已尝试尽量恢复其余数据');
       if (dropped.length) {
         const mb = (dropBytes / 1048576).toFixed(1);
         parts.push('存储容量有限，已跳过超大图片/音乐 ' + dropped.length + ' 项（约 ' + mb + ' MB，可在聊天/头像库中重新添加）');

@@ -5,10 +5,7 @@
 // 功能参考：@FelixFelicis（9416318007）
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
   const HISTORY_KEY = 'decision-history';
   const SETTINGS_KEY = 'decision-settings';
 

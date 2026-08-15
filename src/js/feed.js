@@ -4,10 +4,7 @@
 // TA 会点赞/评论我的动态；我点赞/评论后 TA 有概率回应
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
   const KEY = 'feed-posts';
   function partnerName() { return store.get('lbl-partner') || 'TA'; }
   function partnerAv() { return store.get('avatar-partner') || ''; }

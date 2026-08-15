@@ -5,10 +5,7 @@
 // 后台通知：开启后，页面不在前台时收到 TA 的新消息会弹出浏览器通知。
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
   function toast(msg) {
     let t = document.getElementById('cc-toast');
     if (!t) {

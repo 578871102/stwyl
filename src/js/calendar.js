@@ -3,10 +3,7 @@
 // 每次首次打开日历触发 TA 留言弹窗；美化毛玻璃、无 emoji、矢量图标
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
   const page = document.getElementById('page-calendar');
   if (!page) return;
 

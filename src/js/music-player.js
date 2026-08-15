@@ -3,10 +3,7 @@
 // 歌单、听歌记录、TA 按概率请求一起听歌、歌曲结束 TA 可能接动作、悬浮小框可拖动
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
   function toast(msg) {
     let t = document.getElementById('cc-toast');
     if (!t) { t = document.createElement('div'); t.id = 'cc-toast'; document.body.appendChild(t); }
@@ -67,7 +64,8 @@
     if (!playlists.some(p => p.id === 'spl_default')) {
       playlists.unshift({ id: 'spl_default', name: '默认歌单', createdAt: Date.now() });
     }
-    // 首次运行：往默认歌单里放几首网易云歌（已知歌名直接写入，其余异步自动识别）
+    // 首次运行：往默认歌单里放 2 首内置示例歌（本地合成旋律，不依赖任何外部链接，永不失效；
+    // 歌名异步自动识别）
     if (!library.length && !store.get('music-seed-done')) {
       const seeds = [
         { id: 2613048732, name: 'Moonlit Dream', artist: 'DLSS · shell（月光梦）', cover: 'https://p2.music.126.net/cXuoNwFzgFoQF7bGvC2mIQ==/109951169832660411.jpg' },
@@ -77,7 +75,8 @@
       seeds.forEach((s, i) => {
         const id = 'sm_seed_' + Date.now() + '_' + i;
         ids.push(id);
-        library.push({ id: id, neteaseId: String(s.id), name: s.name || '网易云音乐-' + s.id, artist: s.artist || '', cover: s.cover || '', url: 'https://music.163.com/song/media/outer/url?id=' + s.id + '.mp3', source: 'url', duration: 0, playlistId: 'spl_default', addedAt: Date.now() });
+        library.push({ id: id, neteaseId: String(s.id), name: s.name || '示例旋律-' + (i + 1), artist: s.artist || '', cover: s.cover || '', url: '', source: 'local', duration: 0, playlistId: 'spl_default', addedAt: Date.now() });
+        genDemoAudio(i).then(d => { if (d) window.idbSet(uid + ':music-file:' + id, d); });
       });
       store.set('music-seed-done', '1');
       saveLibrary();
@@ -94,6 +93,74 @@
         });
       });
     }
+    // v3.5.91：网易云外链播放已全面失效 → 检测老版本的种子歌曲（外链 URL），
+    // 自动替换为本地合成示例旋律，保证默认歌单能播放
+    library.forEach(m => {
+      if (m && m.neteaseId && (m.neteaseId === '2613048732' || m.neteaseId === '27538343') && m.url && m.url.indexOf('music.163.com') >= 0) {
+        const idx = m.neteaseId === '2613048732' ? 0 : 1;
+        m.source = 'local';
+        m.url = '';
+        const mid = m.id;
+        saveLibrary();
+        genDemoAudio(idx).then(d => {
+          if (d) {
+            window.idbSet(uid + ':music-file:' + mid, d);
+            toast('默认歌曲已改用内置示例旋律（网易云链接已失效）');
+          } else {
+            toast('内置示例旋律生成失败，请重新添加歌曲');
+          }
+          renderPage();
+        });
+      }
+    });
+  }
+
+  // ================= 内置示例旋律：本地合成（无版权、不联网、永不失效） =================
+  // 用 Web Audio 离线渲染一小段钢琴音色旋律，编码为 WAV dataURL 存入 IndexedDB
+  function genDemoAudio(idx) {
+    return new Promise((resolve) => {
+      try {
+        const AC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+        if (!AC) { resolve(''); return; }
+        const sr = 22050;
+        const ctx = new AC(1, sr * 14, sr);
+        // 两段简单旋律（第一首小星星式上行，第二首欢快式）
+        const notes = idx === 0
+          ? [523,523,587,587,659,659,587,523,523,587,587,659,659,587,659,698,784,784,698,698,659,659,587]
+          : [659,659,698,784,784,698,659,587,523,523,587,659,659,587,587,659,784,784,880,880,784,659,587];
+        let t = ctx.currentTime;
+        const dur = 0.42;
+        notes.forEach((f) => {
+          const osc = ctx.createOscillator();
+          const g = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = f;
+          g.gain.setValueAtTime(0, t);
+          g.gain.linearRampToValueAtTime(0.5, t + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+          osc.connect(g);
+          g.connect(ctx.destination);
+          osc.start(t);
+          osc.stop(t + dur + 0.05);
+          t += dur * 0.9;
+        });
+        ctx.startRendering().then((buf) => {
+          const ch = buf.getChannelData(0);
+          const n = ch.length;
+          const wav = new DataView(new ArrayBuffer(44 + n * 2));
+          const writeStr = (o, s) => { for (let i = 0; i < s.length; i++) wav.setUint8(o + i, s.charCodeAt(i)); };
+          writeStr(0, 'RIFF'); wav.setUint32(4, 36 + n * 2, true); writeStr(8, 'WAVE');
+          writeStr(12, 'fmt '); wav.setUint32(16, 16, true); wav.setUint16(20, 1, true); wav.setUint16(22, 1, true);
+          wav.setUint32(24, sr, true); wav.setUint32(28, sr * 2, true); wav.setUint16(32, 2, true); wav.setUint16(34, 16, true);
+          writeStr(36, 'data'); wav.setUint32(40, n * 2, true);
+          for (let i = 0; i < n; i++) wav.setInt16(44 + i * 2, Math.max(-1, Math.min(1, ch[i])) * 32767, true);
+          const bytes = new Uint8Array(wav.buffer);
+          let bin = '';
+          for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+          resolve('data:audio/wav;base64,' + btoa(bin));
+        }).catch(() => resolve(''));
+      } catch (e) { resolve(''); }
+    });
   }
 
   // ================= 网易云歌名/封面识别（多源兜底） =================

@@ -2,10 +2,7 @@
 // 头像上传、签名、纪念日照片、手机背景、自定义图标、恋爱纪念日、每日打卡（localStorage 持久化）
 (function () {
   const uid = 'xy-home-v2';
-  const store = {
-    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
-    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
-  };
+  const store = window.xyStore(uid);
 
   // 图片压缩后再存储：大幅缩小体积，本地存储容量更宽松（头像/图标 256px，背景/照片 1000px）
   function compressImage(dataUrl, maxSide) {
@@ -271,7 +268,7 @@
       bgHome.classList.remove('has-bg');
       bgHome.style.backgroundImage = '';
     }
-    try { localStorage.removeItem(uid + ':phone-bg'); } catch (e) {}
+    store.remove('phone-bg');
     syncBgUI();
   };
   if (bgRow) {
@@ -381,7 +378,7 @@
         window.openModal('图标已自定义', '', (v) => {
           if (v === '1') pickFile();
           if (v === '2') {
-            try { localStorage.removeItem(uid + ':app-icon-' + key); } catch (err) {}
+            store.remove('app-icon-' + key);
             if (ico && ico.dataset.orig) ico.innerHTML = ico.dataset.orig;
             toast('已恢复默认图标');
           }
@@ -434,14 +431,14 @@
     return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   }
   function getFishLog() {
-    try { return JSON.parse(localStorage.getItem(uid + ':fish-log') || '[]'); } catch (e) { return []; }
+    try { return JSON.parse(store.get('fish-log') || '[]'); } catch (e) { return []; }
   }
   function logFish() {
     const list = getFishLog();
     const t = fishToday();
     if (list.indexOf(t) === -1) {
       list.push(t);
-      try { localStorage.setItem(uid + ':fish-log', JSON.stringify(list)); } catch (e) {}
+      store.set('fish-log', JSON.stringify(list));
     }
     updateFishDays();
   }
@@ -460,7 +457,7 @@
       const list = getFishLog();
       if (list.indexOf(d) === -1) {
         list.push(d);
-        try { localStorage.setItem(uid + ':fish-log', JSON.stringify(list)); } catch (e) {}
+        store.set('fish-log', JSON.stringify(list));
         updateFishDays();
       }
     }
