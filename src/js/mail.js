@@ -8,7 +8,6 @@
   };
   const KEY = 'mail-letters';
   const TITLES = ['好久不见', '最近还好吗', '想你了', '给你写了封信', '深夜随想', '一些想说的话'];
-  const REPLIES = ['收到你的回信了，很开心', '谢谢你的回信', '你的信我看了，很感动', '看到你的回信了，真好', '你的心意我收到了'];
   let mtab = 'in';
   let viewLetter = null;
 
@@ -30,16 +29,38 @@
   function save(list) { store.set(KEY, JSON.stringify(list)); }
 
   // 写信纸 HTML（简约卡片：标题 + 寄信人/时间 + 正文）
+  // 正文支持字卡库图片（dataURL）直接显示
+  function escHtml(s) { return String(s).replace(/</g, '&lt;'); }
+  function renderBody(content) {
+    const s = String(content || '');
+    let html = '';
+    const re = /(data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+)/g;
+    let last = 0, m;
+    while ((m = re.exec(s))) {
+      html += escHtml(s.slice(last, m.index));
+      html += '<img class="mail-body-img" src="' + m[0] + '" alt="表情">';
+      last = m.index + m[0].length;
+    }
+    html += escHtml(s.slice(last));
+    return html;
+  }
   function letterPaper(title, content, date, author) {
     return '<div class="mail-paper">' +
-      '<div class="mail-paper-head"><span class="mail-paper-author">' + String(author || '').replace(/</g, '&lt;') + '</span><span class="mail-paper-date">' + date + '</span></div>' +
-      (title ? '<div class="mail-paper-title">' + String(title).replace(/</g, '&lt;') + '</div>' : '') +
-      '<div class="mail-paper-body">' + String(content || '').replace(/</g, '&lt;') + '</div>' +
+      '<div class="mail-paper-head"><span class="mail-paper-author">' + escHtml(author) + '</span><span class="mail-paper-date">' + date + '</span></div>' +
+      (title ? '<div class="mail-paper-title">' + escHtml(title) + '</div>' : '') +
+      '<div class="mail-paper-body">' + renderBody(content) + '</div>' +
       '</div>';
   }
-  // 打开信详情（复用 tc-mask 弹层）
+  // 打开信详情（复用 tc-mask 弹层；v3.5.68 打开即标记已读）
   function openLetter(l) {
     viewLetter = l;
+    // 收到的来信：打开后标记已读（「新来信」消失）
+    if (l && l.type === 'received' && !l.read) {
+      l.read = true;
+      const list = load();
+      const idx = list.findIndex(x => x.id === l.id);
+      if (idx >= 0) { list[idx].read = true; save(list); }
+    }
     const name = partnerName();
     const myName = store.get('lbl-user') || '我';
     let html = '';
@@ -96,7 +117,7 @@
       // TA 定时回信确认（概率与时间在回复设置-信箱调整）
       const cfg = mailCfg();
       if (Math.random() * 100 < cfg.replyProb) {
-        const replyMsg = REPLIES[Math.floor(Math.random() * REPLIES.length)];
+        const replyMsg = taLetterContent(cfg);
         const delayMs = (cfg.replyMin + Math.random() * Math.max(1, cfg.replyMax - cfg.replyMin)) * 60000;
         const timer = setTimeout(() => {
           const l2 = load();
@@ -128,7 +149,8 @@
     if (inEl) {
       inEl.innerHTML = inList.length
         ? inList.map(l => '<div class="mail-item" data-id="' + l.id + '"><div class="mail-item-av"><svg viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></div>' +
-            '<div class="mail-item-body"><div class="mail-item-title">来自 ' + name + (l.myReply ? ' <span class="mail-tag">已回信</span>' : ' <span class="mail-tag new">新来信</span>') + '</div>' +
+            '<div class="mail-item-body"><div class="mail-item-title">来自 ' + name +
+              (l.myReply ? ' <span class="mail-tag">已回信</span>' : (l.read ? '' : ' <span class="mail-tag new">新来信</span>')) + '</div>' +
             '<div class="mail-item-desc">' + (l.content || '').slice(0, 30) + '</div></div>' +
             '<div class="mail-item-time">' + fmtDT(l.tm) + '</div></div>').join('')
         : '<div class="ta-empty">还没有收到信，等等 TA 吧</div>';
@@ -191,15 +213,42 @@
       stickerEn: c['ml-sticker-en'] !== undefined ? c['ml-sticker-en'] : 1
     };
   }
-  const KAOMOJI = ['(⁄ ⁄•⁄ω⁄•⁄ ⁄)', '(｡•̀ᴗ-)✧', '(๑´ㅂ`๑)', '(。-ω-)', '(*^▽^*)', '(●\'◡\'●)'];
-  function enrichContent(text, cfg) {
-    let t = text;
-    if (cfg.kaomojiEn && Math.random() * 100 < 30) t += ' ' + KAOMOJI[Math.floor(Math.random() * KAOMOJI.length)];
-    if (cfg.emojiEn && Math.random() * 100 < 15) t += ' ♡';
-    if (cfg.stickerEn) {
-      const st = (window.getMediaCards && window.getMediaCards('sticker')) || [];
-      if (st.length && Math.random() * 100 < 20) t += ' [表情]';
-    }
+  // 字卡库分类（与聊天/朋友圈同一套规则）：文字 / 颜文字 / emoji / 表情包(图片)
+  function mailCardPool() {
+    const custom = (window.getCustomCards && window.getCustomCards()) || [];
+    const text = [], kaomoji = [], emoji = [];
+    custom.forEach(s => {
+      if (!s || typeof s !== 'string') return;
+      if (/^data:/.test(s)) return;
+      let isEmoji = false;
+      for (const ch of s) {
+        const c = ch.codePointAt(0);
+        if ((c >= 0x1F000 && c <= 0x1FAFF) || (c >= 0x2600 && c <= 0x27BF)) { isEmoji = true; break; }
+      }
+      if (isEmoji) { emoji.push(s); return; }
+      if (/[\(（｡◕(◕)(づ｡(¬)]/.test(s) && /[\)）】)]/.test(s)) { kaomoji.push(s); return; }
+      text.push(s);
+    });
+    return {
+      text: text,
+      kaomoji: kaomoji,
+      emoji: emoji,
+      sticker: (window.getMediaCards && window.getMediaCards('sticker')) || [],
+      image: (window.getMediaCards && window.getMediaCards('image')) || []
+    };
+  }
+  // TA 写信内容：多个字卡（空格分隔）+ 概率加颜文字/emoji/表情包
+  function taLetterContent(cfg) {
+    const pool = mailCardPool();
+    const words = pool.text.length ? pool.text : TA_LETTERS;
+    const n = 1 + Math.floor(Math.random() * Math.min(Math.max(1, cfg.maxCards || 1), 8));
+    const parts = [];
+    for (let i = 0; i < n; i++) parts.push(words[Math.floor(Math.random() * words.length)]);
+    let t = parts.join(' ');
+    if (cfg.kaomojiEn && pool.kaomoji.length && Math.random() * 100 < 30) t += ' ' + pool.kaomoji[Math.floor(Math.random() * pool.kaomoji.length)];
+    if (cfg.emojiEn && pool.emoji.length && Math.random() * 100 < 15) t += ' ' + pool.emoji[Math.floor(Math.random() * pool.emoji.length)];
+    const st = pool.sticker.concat(pool.image);
+    if (cfg.stickerEn && st.length && Math.random() * 100 < 20) t += ' ' + st[Math.floor(Math.random() * st.length)];
     return t;
   }
   function letterLast() { const v = parseInt(store.get('mail-letter-last'), 10); return isNaN(v) ? 0 : v; }
@@ -210,14 +259,12 @@
       const cfg = mailCfg();
       let last = letterLast(), next = letterNext();
       if (last > now || last < 0 || isNaN(last)) { last = 0; next = 0; }
-      // 星言机制：最短/最长写信时间（分钟）内随机一次机会，命中概率才来信
+      // 星言机制：最短/最长写信时间（分钟）内随机一次间隔，间隔到点后每分钟掷一次概率，命中才来信
       if ((now - last) / 60000 < next) return;
-      if (Math.random() * 100 >= cfg.writeProb) {
-        store.set('mail-letter-next', String(cfg.writeMin + Math.random() * Math.max(1, cfg.writeMax - cfg.writeMin)));
-        return;
-      }
+      // 未命中：不重置间隔，下一轮 tick 继续掷（概率真实生效，不会出现"等 8 小时再掷一次"）
+      if (Math.random() * 100 >= cfg.writeProb) return;
       const name = partnerName();
-      const content = enrichContent(TA_LETTERS[Math.floor(Math.random() * TA_LETTERS.length)], cfg);
+      const content = taLetterContent(cfg);
       const letter = { id: 'l_' + Date.now(), type: 'received', tt: TITLES[Math.floor(Math.random() * TITLES.length)], content: content, tm: Date.now() };
       const list = load();
       list.unshift(letter);

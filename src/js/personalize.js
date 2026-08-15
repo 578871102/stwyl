@@ -508,6 +508,7 @@
   }
 
   // 其他纪念日：可自由添加/删除（存本地）
+  // 条目：{ name, date, type }——type: 'ann' 纪念日（已 X 天）/ 'count' 倒数日（还有 X 天）
   function getExtras() {
     try { return JSON.parse(store.get('mem-extras') || '[]'); } catch (e) { return []; }
   }
@@ -520,12 +521,18 @@
     extras.forEach((it, i) => {
       const d = document.createElement('div');
       d.className = 'mem-extra';
-      const days = Math.max(0, Math.round((new Date() - new Date(it.date + 'T00:00:00')) / 864e5));
+      const target = new Date(it.date + 'T00:00:00');
+      // diff 正 = 日期在未来（倒计时）；负 = 已过
+      const diff = Math.round((target.getTime() - Date.now()) / 864e5);
+      const isCount = it.type === 'count' || diff > 0;
+      const label = isCount
+        ? (diff > 0 ? '还有 ' + diff + ' 天' : '已过 ' + Math.abs(diff) + ' 天')
+        : '已 ' + Math.abs(diff) + ' 天';
       const fmt = it.date.split('-').join('.');
       d.innerHTML =
         '<span class="me-name">' + it.name + '</span>' +
         '<span class="me-date">' + fmt + '</span>' +
-        '<span class="me-days">已 ' + days + ' 天</span>' +
+        '<span class="me-days' + (isCount ? ' count' : '') + '">' + label + '</span>' +
         '<button class="me-del">✕</button>';
       d.querySelector('.me-del').addEventListener('click', () => {
         const ex = getExtras();
@@ -538,49 +545,121 @@
   }
   const memAdd = document.getElementById('mem-add');
   if (memAdd) {
-    memAdd.addEventListener('click', () => {
-      if (window.openModal) {
-        window.openModal('添加纪念日', '', (raw) => {
-          // 支持两行：名称 + 日期，或一行 "名称 日期"
-          const lines = String(raw || '').split('\n').map(l => l.trim()).filter(Boolean);
-          if (!lines.length) return;
-          let name = '', date = '';
-          if (lines.length >= 2) {
-            name = lines[0];
-            date = lines[1];
-          } else {
-            const m = lines[0].match(/^(.+?)\s+(\d{4}-\d{1,2}-\d{1,2})$/);
-            if (m) { name = m[1]; date = m[2]; }
-            else { name = lines[0]; }
-          }
-          // 名称后跟日期选择
-          if (!date) {
-            // 名称已定，弹日期选择
-            const dateInput = document.createElement('input');
-            dateInput.type = 'date';
-            dateInput.style.display = 'none';
-            document.body.appendChild(dateInput);
-            dateInput.addEventListener('change', () => {
-              if (dateInput.value) {
-                const ex = getExtras();
-                ex.push({ name: name || '纪念日', date: dateInput.value });
-                saveExtras(ex);
-                renderExtras();
-              }
-              dateInput.remove();
-            });
-            dateInput.click();
-            return;
-          }
-          if (name && date) {
-            const ex = getExtras();
-            ex.push({ name: name, date: date });
-            saveExtras(ex);
-            renderExtras();
-          }
-        }, { textarea: true, textareaPlaceholder: '纪念日名称\n日期（如 2024-05-20）' });
-      }
+    memAdd.addEventListener('click', openMemAddModal);
+  }
+
+  // ================= 添加纪念日 / 倒数日：日历选择弹层 =================
+  // v3.5.29：从"文本输入名称+日期"改为可视化月历点选（更直观美观）
+  let memMask = null;      // 弹层单例
+  let memSelDate = '';     // 选中日期 'YYYY-MM-DD'
+  let memSelType = 'auto'; // auto/ann/count
+  let mvY = 0, mvM = -1;   // 弹层当前查看的年/月（-1=本月）
+  function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+  function memToday() {
+    const d = new Date();
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+  function renderMemCal() {
+    if (!memMask) return;
+    const now = new Date();
+    if (mvM < 0) { mvY = now.getFullYear(); mvM = now.getMonth(); }
+    const y = mvY, m = mvM;
+    memMask.querySelector('.mem-cal-title').textContent = y + ' 年 ' + (m + 1) + ' 月';
+    const first = new Date(y, m, 1);
+    const days = new Date(y, m + 1, 0).getDate();
+    const startWd = first.getDay();
+    const wds = ['日', '一', '二', '三', '四', '五', '六'];
+    const t = memToday();
+    let html = wds.map(w => '<span class="mem-cal-wd">' + w + '</span>').join('');
+    for (let i = 0; i < startWd; i++) html += '<span class="mem-cal-cell blank"></span>';
+    for (let d = 1; d <= days; d++) {
+      const ds = y + '-' + pad2(m + 1) + '-' + pad2(d);
+      const isToday = ds === t;
+      const isSel = ds === memSelDate;
+      html += '<span class="mem-cal-cell' + (isToday ? ' today' : '') + (isSel ? ' sel' : '') + '" data-d="' + ds + '">' + d + '</span>';
+    }
+    const grid = memMask.querySelector('.mem-cal-grid');
+    grid.innerHTML = html;
+    grid.querySelectorAll('.mem-cal-cell[data-d]').forEach(cell => {
+      cell.addEventListener('click', () => {
+        memSelDate = cell.getAttribute('data-d');
+        renderMemCal();
+      });
     });
+  }
+  function closeMemAdd() {
+    if (memMask) memMask.hidden = true;
+  }
+  function openMemAddModal() {
+    if (!memMask) {
+      memMask = document.createElement('div');
+      memMask.id = 'mem-add-mask';
+      memMask.className = 'mg-mask';
+      memMask.innerHTML =
+        '<div class="mg-panel mem-add-panel">' +
+          '<div class="mg-head"><span>添加纪念日 / 倒数日</span><button class="mg-close">✕</button></div>' +
+          '<input type="text" class="mem-add-input" placeholder="名称（如：在一起一周年 / 生日）" maxlength="24">' +
+          '<div class="mem-cal">' +
+            '<div class="mem-cal-nav">' +
+              '<button class="mem-cal-btn" data-nav="-1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M15 18l-6-6 6-6"/></svg></button>' +
+              '<span class="mem-cal-title"></span>' +
+              '<button class="mem-cal-btn" data-nav="1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M9 18l6-6-6-6"/></svg></button>' +
+            '</div>' +
+            '<div class="mem-cal-grid"></div>' +
+          '</div>' +
+          '<div class="mem-type-row">' +
+            '<button class="mem-type-pill sel" data-type="auto">自动</button>' +
+            '<button class="mem-type-pill" data-type="ann">纪念日</button>' +
+            '<button class="mem-type-pill" data-type="count">倒数日</button>' +
+          '</div>' +
+          '<div class="mem-type-hint">未来日期自动按倒数日显示，过去日期按纪念日显示</div>' +
+          '<div class="mem-add-foot">' +
+            '<button class="mem-add-cancel">取消</button>' +
+            '<button class="mem-add-ok">添加</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(memMask);
+      memMask.querySelector('.mg-close').addEventListener('click', closeMemAdd);
+      memMask.addEventListener('click', (e) => { if (e.target === memMask) closeMemAdd(); });
+      memMask.querySelector('.mem-add-cancel').addEventListener('click', closeMemAdd);
+      // 月份切换
+      memMask.querySelectorAll('.mem-cal-btn').forEach(b => b.addEventListener('click', () => {
+        mvM += parseInt(b.getAttribute('data-nav'), 10);
+        if (mvM < 0) { mvM = 11; mvY--; }
+        if (mvM > 11) { mvM = 0; mvY++; }
+        renderMemCal();
+      }));
+      // 类型切换
+      memMask.querySelectorAll('.mem-type-pill').forEach(b => b.addEventListener('click', () => {
+        memSelType = b.getAttribute('data-type');
+        memMask.querySelectorAll('.mem-type-pill').forEach(x => x.classList.toggle('sel', x === b));
+      }));
+      // 确定添加
+      memMask.querySelector('.mem-add-ok').addEventListener('click', () => {
+        const nameInput = memMask.querySelector('.mem-add-input');
+        const name = (nameInput.value || '').trim();
+        if (!name) { nameInput.focus(); toast('请填写名称'); return; }
+        if (!memSelDate) { toast('请选择日期'); return; }
+        const type = memSelType === 'auto'
+          ? (new Date(memSelDate + 'T00:00:00').getTime() > Date.now() ? 'count' : 'ann')
+          : memSelType;
+        const ex = getExtras();
+        ex.push({ name: name, date: memSelDate, type: type });
+        saveExtras(ex);
+        renderExtras();
+        closeMemAdd();
+      });
+    }
+    // 每次打开重置：默认今天 + 自动类型
+    memMask.hidden = false;
+    memSelDate = memToday();
+    memSelType = 'auto';
+    const nameInput = memMask.querySelector('.mem-add-input');
+    nameInput.value = '';
+    memMask.querySelectorAll('.mem-type-pill').forEach(x => x.classList.toggle('sel', x.getAttribute('data-type') === 'auto'));
+    mvY = 0; mvM = -1;
+    renderMemCal();
+    setTimeout(() => nameInput.focus(), 80);
   }
 
   // 纪念页：桌面【纪念】图标进入
@@ -610,13 +689,22 @@
   if (resetRow) {
     resetRow.addEventListener('click', () => {
       if (window.openModal) {
-        window.openModal('确认清除所有本地数据？（头像、昵称、背景、图标、纪念日、打卡）', '', () => {
+        window.openModal('确认清除所有本地数据？（头像、昵称、背景、图标、纪念日、打卡、聊天记录、字卡、音乐、设置）', '', () => {
           try {
             Object.keys(localStorage)
               .filter(k => k.indexOf(uid + ':') === 0)
               .forEach(k => localStorage.removeItem(k));
           } catch (e) {}
-          location.reload();
+          // 清空 IndexedDB（mochi-db）：只清 localStorage 不清 IDB 的话，
+          // 刷新后 idbRestore 会把 IDB 里的旧数据全部回填，等于没清除（手机端必现）
+          const idbDone = (window.idbClearAll && window.idbClearAll()) || Promise.resolve(true);
+          // 顺带清理 Service Worker 离线缓存（只缓存页面静态资源，不含用户数据）
+          if (window.caches && caches.keys) {
+            try {
+              caches.keys().then(ks => Promise.all(ks.map(k => caches.delete(k)))).catch(() => {});
+            } catch (e) {}
+          }
+          idbDone.then(() => { location.reload(); });
         }, { noInput: true });
       }
     });
@@ -657,7 +745,7 @@
     });
   }
 
-  // 离周末还有几天（点击摸鱼 +1，数值累计）
+  // 离周末还有几天（点击摸鱼 +1，当天数值）
   const weDays = document.getElementById('weekend-days');
   const weCount = document.getElementById('weekend-count');
   const weFish = document.getElementById('weekend-fish');
@@ -670,86 +758,205 @@
       weDays.textContent = '离周末还有 ' + daysTo + ' 天';
     }
   }
-  if (weCount) {
-    const n = parseInt(store.get('weekend-fish') || '0', 10) || 0;
-    weCount.textContent = n;
-  }
-  // 我的摸鱼值（累计，与按钮数值一致）
-  const weMineEl = document.getElementById('weekend-mine');
-  const weMineName = document.getElementById('weekend-mine-name');
-  if (weMineName) {
-    const myName = store.get('lbl-user') || '我';
-    weMineName.firstChild.textContent = myName + ' 摸鱼值 ';
-  }
-  if (weMineEl) {
-    weMineEl.textContent = parseInt(store.get('weekend-fish') || '0', 10) || 0;
-  }
-  if (weFish) {
-    weFish.addEventListener('click', () => {
-      const n = (parseInt(store.get('weekend-fish') || '0', 10) || 0) + 1;
-      store.set('weekend-fish', String(n));
-      if (weCount) weCount.textContent = n;
-      if (weMineEl) weMineEl.textContent = n;
-      if (window.logFish) window.logFish();
-    });
-  }
-  // 联系人摸鱼值：使用网站时每 60 秒 60% 概率 +1~10（累计，每日记录）
-  // 我的摸鱼值：同样每 60 秒 60% 概率 +1~10（自动增长，按钮点击仍可 +1）
-  const weTaEl = document.getElementById('weekend-ta');
-  const weTaName = document.getElementById('weekend-ta-name');
-  if (weTaName) {
-    const name = store.get('lbl-partner') || 'TA';
-    weTaName.firstChild.textContent = name + ' 摸鱼值 ';
-  }
-  // 每日摸鱼记录：{ date, mine, ta }（当天累计值）
+
+  // ===== 摸鱼值（当天值 + 每日新增记录 + 历史累计）=====
+  // 三套数据（v3.5.26 起）：
+  //  - day-fish-<日期> / day-fish-ta-<日期>：当天摸鱼值（每天 0 点自动重置）
+  //  - fish-day-add：每日新增记录 [{date,mine,ta}]（按日期独立累加，导入备份不会互相覆盖）
+  //  - fish-total / fish-total-ta：历史累计（主页「每日摸鱼值」顶部展示）
   function fishDayKey() {
     const d = new Date();
     return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
   }
   function fishDayLog() {
-    try { return JSON.parse(store.get('fish-day-log') || '[]'); } catch (e) { return []; }
+    try { return JSON.parse(store.get('fish-day-add') || '[]'); } catch (e) { return []; }
   }
-  function saveFishDayLog(list) { store.set('fish-day-log', JSON.stringify(list)); }
-  function recordFishDay(mine, ta) {
-    const list = fishDayLog();
+  function saveFishDayLog(list) { store.set('fish-day-add', JSON.stringify(list)); }
+  function dayVal(k) { return parseInt(store.get(k) || '0', 10) || 0; }
+  // 当天摸鱼值（读 day 键；新的一天自动从 0 开始）
+  function todayMine() { return dayVal('day-fish-' + fishDayKey()); }
+  function todayTa() { return dayVal('day-fish-ta-' + fishDayKey()); }
+  // 增加当天摸鱼值：写入 day 键（当天）+ fish-day-add（每日新增）+ fish-total*（历史累计）
+  function addFish(addMine, addTa) {
     const key = fishDayKey();
+    if (addMine) {
+      store.set('day-fish-' + key, String(todayMine() + addMine));
+      store.set('fish-total', String((dayVal('fish-total') || 0) + addMine));
+    }
+    if (addTa) {
+      store.set('day-fish-ta-' + key, String(todayTa() + addTa));
+      store.set('fish-total-ta', String((dayVal('fish-total-ta') || 0) + addTa));
+    }
+    // 每日新增记录：当天独立累加（不覆盖历史）
+    const list = fishDayLog();
     const ex = list.find(x => x.date === key);
-    if (ex) { ex.mine = mine; ex.ta = ta; }
-    else { list.push({ date: key, mine: mine, ta: ta }); }
+    if (ex) { ex.mine += addMine || 0; ex.ta += addTa || 0; }
+    else list.push({ date: key, mine: addMine || 0, ta: addTa || 0 });
     if (list.length > 365) list.splice(0, list.length - 365);
     saveFishDayLog(list);
   }
+  // 一次性迁移 v3.5.25 及更早数据：
+  //  旧 weekend-fish / weekend-fish-ta（历史累计）→ fish-total*（历史累计）
+  //  旧 fish-day-log（按天累计值）→ 按天差值拆成每日新增 fish-day-add + 重建当天 day-fish-*
+  (function () {
+    if (store.get('fish-migrated')) return;
+    try {
+      const oldMine = parseInt(store.get('weekend-fish') || '0', 10) || 0;
+      const oldTa = parseInt(store.get('weekend-fish-ta') || '0', 10) || 0;
+      // 历史累计
+      if (!store.get('fish-total') && oldMine) store.set('fish-total', String(oldMine));
+      if (!store.get('fish-total-ta') && oldTa) store.set('fish-total-ta', String(oldTa));
+      // 旧按天累计记录 → 每日新增（后一天减前一天）
+      let oldLog = [];
+      try { oldLog = JSON.parse(store.get('fish-day-log') || '[]'); } catch (e) {}
+      if (Array.isArray(oldLog) && oldLog.length) {
+        const days = [];
+        let prevMine = 0, prevTa = 0;
+        oldLog.slice().sort((a, b) => (a.date < b.date ? -1 : 1)).forEach(x => {
+          const m = parseInt(x.mine || '0', 10) || 0;
+          const t = parseInt(x.ta || '0', 10) || 0;
+          days.push({ date: x.date, mine: Math.max(0, m - prevMine), ta: Math.max(0, t - prevTa) });
+          prevMine = m; prevTa = t;
+        });
+        const list = fishDayLog(); // 新格式（迁移前为空）
+        const map = {};
+        list.forEach(x => { map[x.date] = x; });
+        days.forEach(x => {
+          if (map[x.date]) { map[x.date].mine += x.mine; map[x.date].ta += x.ta; }
+          else map[x.date] = x;
+        });
+        const merged = Object.keys(map).map(k => map[k]).sort((a, b) => (a.date < b.date ? -1 : 1)).slice(-365);
+        saveFishDayLog(merged);
+        // 重建当天 day 键（今天的新增 = 记录里今天的新增）
+        const key = fishDayKey();
+        const today = merged.find(x => x.date === key);
+        if (today) {
+          store.set('day-fish-' + key, String(dayVal('day-fish-' + key) + (today.mine || 0)));
+          store.set('day-fish-ta-' + key, String(dayVal('day-fish-ta-' + key) + (today.ta || 0)));
+        }
+      } else {
+        // 无旧记录：旧累计直接作为当天值（沿用）
+        const key = fishDayKey();
+        if (oldMine) store.set('day-fish-' + key, String(oldMine));
+        if (oldTa) store.set('day-fish-ta-' + key, String(oldTa));
+      }
+      store.set('fish-migrated', '1');
+    } catch (e) {}
+  })();
+
+  // ===== 工作值（v3.5.65：与摸鱼值完全并行——当天值 + 每日新增记录 + 历史累计） =====
+  //  - day-work-<日期> / day-work-ta-<日期>：当天工作值（每天 0 点自动重置）
+  //  - work-day-add：每日新增记录 [{date,mine,ta}]
+  //  - work-total / work-total-ta：历史累计（主页「每日打工值」顶部展示）
+  function workDayLog() {
+    try { return JSON.parse(store.get('work-day-add') || '[]'); } catch (e) { return []; }
+  }
+  function saveWorkDayLog(list) { store.set('work-day-add', JSON.stringify(list)); }
+  function todayWorkMine() { return dayVal('day-work-' + fishDayKey()); }
+  function todayWorkTa() { return dayVal('day-work-ta-' + fishDayKey()); }
+  function addWork(addMine, addTa) {
+    const key = fishDayKey();
+    if (addMine) {
+      store.set('day-work-' + key, String(todayWorkMine() + addMine));
+      store.set('work-total', String((dayVal('work-total') || 0) + addMine));
+    }
+    if (addTa) {
+      store.set('day-work-ta-' + key, String(todayWorkTa() + addTa));
+      store.set('work-total-ta', String((dayVal('work-total-ta') || 0) + addTa));
+    }
+    const list = workDayLog();
+    const ex = list.find(x => x.date === key);
+    if (ex) { ex.mine += addMine || 0; ex.ta += addTa || 0; }
+    else list.push({ date: key, mine: addMine || 0, ta: addTa || 0 });
+    if (list.length > 365) list.splice(0, list.length - 365);
+    saveWorkDayLog(list);
+  }
+
+  // 我的摸鱼值（当天，与按钮数值一致）
+  const weMineEl = document.getElementById('weekend-mine');
+  const weMineName = document.getElementById('weekend-mine-name');
+  if (weMineName) {
+    const myName = store.get('lbl-user') || '我';
+    // v3.5.75：新结构 grid 两列（.pair > i）——按列标签更新昵称
+    const lab = weMineName.querySelectorAll('.pair i');
+    if (lab.length >= 2) { lab[0].textContent = myName + ' 摸鱼值'; lab[1].textContent = myName + ' 工作值'; }
+  }
+  if (weMineEl) {
+    weMineEl.textContent = todayMine();
+  }
+  if (weFish) {
+    weFish.addEventListener('click', () => {
+      addFish(1, 0);
+      if (weCount) weCount.textContent = todayMine();
+      if (weMineEl) weMineEl.textContent = todayMine();
+      if (window.logFish) window.logFish();
+    });
+  }
+  // 联系人摸鱼值：使用网站时每 60 秒 60% 概率 +1~10（当天值 + 每日记录 + 历史累计）
+  // 我的摸鱼值：同样每 60 秒 60% 概率 +1~10（自动增长，按钮点击仍可 +1）
+  const weTaEl = document.getElementById('weekend-ta');
+  const weTaName = document.getElementById('weekend-ta-name');
+  if (weTaName) {
+    const name = store.get('lbl-partner') || 'TA';
+    // v3.5.75：新结构 grid 两列（.pair > i）——按列标签更新昵称，不覆盖 pair 结构
+    const lab = weTaName.querySelectorAll('.pair i');
+    if (lab.length >= 2) { lab[0].textContent = name + ' 摸鱼值'; lab[1].textContent = name + ' 工作值'; }
+  }
   function syncFishUI() {
-    const mine = parseInt(store.get('weekend-fish') || '0', 10) || 0;
-    const ta = parseInt(store.get('weekend-fish-ta') || '0', 10) || 0;
+    const mine = todayMine();
+    const ta = todayTa();
     if (weMineEl) weMineEl.textContent = mine;
     if (weTaEl) weTaEl.textContent = ta;
     if (weCount) weCount.textContent = mine;
-    recordFishDay(mine, ta);
+    // v3.5.65：工作值同步显示（桌面小字 + 主页历史）
+    const wMine = todayWorkMine();
+    const wTa = todayWorkTa();
+    const weWorkMine = document.getElementById('weekend-work');
+    const weWorkTa = document.getElementById('weekend-work-ta');
+    if (weWorkMine) weWorkMine.textContent = wMine;
+    if (weWorkTa) weWorkTa.textContent = wTa;
+    // v3.5.74：昵称标签同步（摸鱼值 + 工作值标签一起更新昵称）
+    const myName = store.get('lbl-user') || '我';
+    const taName = store.get('lbl-partner') || 'TA';
+    if (weMineName) {
+      const lm = weMineName.querySelectorAll('.pair i');
+      if (lm.length >= 2) { lm[0].textContent = myName + ' 摸鱼值'; lm[1].textContent = myName + ' 工作值'; }
+    }
+    if (weTaName) {
+      const lt = weTaName.querySelectorAll('.pair i');
+      if (lt.length >= 2) { lt[0].textContent = taName + ' 摸鱼值'; lt[1].textContent = taName + ' 工作值'; }
+    }
     if (window.renderFishHistory) window.renderFishHistory();
+    if (window.renderWorkHistory) window.renderWorkHistory();
   }
   if (weTaEl) {
     syncFishUI();
     setInterval(() => {
       try {
-        // 联系人：60% 概率 +1~10
-        if (Math.random() * 100 < 60) {
-          const add = 1 + Math.floor(Math.random() * 10);
-          const n = (parseInt(store.get('weekend-fish-ta') || '0', 10) || 0) + add;
-          store.set('weekend-fish-ta', String(n));
-        }
-        // 我的：60% 概率 +1~10
-        if (Math.random() * 100 < 60) {
-          const add = 1 + Math.floor(Math.random() * 10);
-          const n = (parseInt(store.get('weekend-fish') || '0', 10) || 0) + add;
-          store.set('weekend-fish', String(n));
-        }
+        let addMine = 0, addTa = 0, addWM = 0, addWT = 0;
+        // 摸鱼值：双方各 60% 概率 +1~10
+        if (Math.random() * 100 < 60) addTa = 1 + Math.floor(Math.random() * 10);
+        if (Math.random() * 100 < 60) addMine = 1 + Math.floor(Math.random() * 10);
+        // 工作值：同样各 60% 概率 +1~10（与摸鱼值刷新机制一致）
+        if (Math.random() * 100 < 60) addWT = 1 + Math.floor(Math.random() * 10);
+        if (Math.random() * 100 < 60) addWM = 1 + Math.floor(Math.random() * 10);
+        if (addMine || addTa) addFish(addMine, addTa);
+        if (addWM || addWT) addWork(addWM, addWT);
         syncFishUI();
       } catch (e) {}
     }, 60000);
   }
-  // 每日摸鱼值历史（供主页展示）
+  // 每日摸鱼值历史（供主页展示；fish-day-add 按日期独立，最新在前）
   window.getFishHistory = function () { return fishDayLog().slice().reverse(); };
+  // 历史累计（供主页顶部展示）
+  window.getFishTotals = function () {
+    return { mine: dayVal('fish-total'), ta: dayVal('fish-total-ta') };
+  };
+  // v3.5.65：每日工作值历史 + 累计（供主页「每日打工值」）
+  window.getWorkHistory = function () { return workDayLog().slice().reverse(); };
+  window.getWorkTotals = function () {
+    return { mine: dayVal('work-total'), ta: dayVal('work-total-ta') };
+  };
 
   // 可二传二改的说明：点设置行 → 全屏说明页
   const licRow = document.getElementById('row-license');

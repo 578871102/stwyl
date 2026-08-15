@@ -43,15 +43,45 @@
     const h = (window.getFishHistory && window.getFishHistory()) || [];
     const name = store.get('lbl-partner') || 'TA';
     const myName = store.get('lbl-user') || '我';
-    el.innerHTML = h.length
+    // 顶部历史累计（我的 + 联系人）
+    const tot = (window.getFishTotals && window.getFishTotals()) || { mine: 0, ta: 0 };
+    const totalHtml =
+      '<div class="fish-total">' +
+        '<span class="ft-item"><b>' + myName + '</b> 累计 ' + (tot.mine || 0) + '</span>' +
+        '<span class="ft-item"><b>' + name + '</b> 累计 ' + (tot.ta || 0) + '</span>' +
+      '</div>';
+    el.innerHTML = totalHtml + (h.length
       ? h.map(x => '<div class="tc-listitem"><div class="tc-li-top"><span class="tc-li-q">' + x.date + '</span></div>' +
-          '<div class="tc-li-line">' + myName + ' 摸鱼值：' + (x.mine || 0) + '</div>' +
-          '<div class="tc-li-line">' + name + ' 摸鱼值：' + (x.ta || 0) + '</div></div>').join('')
-      : '<div class="ta-empty">暂无摸鱼值记录</div>';
+          '<div class="tc-li-line">' + myName + ' 当天摸鱼：+' + (x.mine || 0) + '</div>' +
+          '<div class="tc-li-line">' + name + ' 当天摸鱼：+' + (x.ta || 0) + '</div></div>').join('')
+      : '<div class="ta-empty">暂无摸鱼值记录</div>');
+  };
+  // 每日打工值记录（v3.5.65：与每日摸鱼值同款——顶部累计 + 每日新增）
+  window.renderWorkHistory = function () {
+    const el = document.getElementById('home-work');
+    if (!el) return;
+    const h = (window.getWorkHistory && window.getWorkHistory()) || [];
+    const name = store.get('lbl-partner') || 'TA';
+    const myName = store.get('lbl-user') || '我';
+    const tot = (window.getWorkTotals && window.getWorkTotals()) || { mine: 0, ta: 0 };
+    const totalHtml =
+      '<div class="fish-total">' +
+        '<span class="ft-item"><b>' + myName + '</b> 累计 ' + (tot.mine || 0) + '</span>' +
+        '<span class="ft-item"><b>' + name + '</b> 累计 ' + (tot.ta || 0) + '</span>' +
+      '</div>';
+    el.innerHTML = totalHtml + (h.length
+      ? h.map(x => '<div class="tc-listitem"><div class="tc-li-top"><span class="tc-li-q">' + x.date + '</span></div>' +
+          '<div class="tc-li-line">' + myName + ' 当天打工：+' + (x.mine || 0) + '</div>' +
+          '<div class="tc-li-line">' + name + ' 当天打工：+' + (x.ta || 0) + '</div></div>').join('')
+      : '<div class="ta-empty">暂无打工值记录</div>');
   };
   function render() {
     // 只渲染当前 tab 面板（避免隐藏面板无谓渲染）
     const showOnly = htab;
+    // 每日打工值记录
+    if (showOnly === 'work') {
+      window.renderWorkHistory();
+    }
     // 每日摸鱼值记录
     if (showOnly === 'fish') {
       window.renderFishHistory();

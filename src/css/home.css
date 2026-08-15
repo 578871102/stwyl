@@ -3,7 +3,7 @@
    纯白纸底 + 虚线描边 + 上下装饰点，细节更精致 */
 .deco-widget {
   position:relative; height:190px; border-radius:26px;
-  margin-bottom:16px; flex-shrink:0;
+  margin-top:14px; margin-bottom:14px; flex-shrink:0;
   background:#ffffff;
   border:1px solid rgba(0,0,0,.1);
   box-shadow:0 4px 14px rgba(0,0,0,.05);
@@ -75,32 +75,45 @@
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 .ck-btn {
-  font-size:11px; font-weight:700; color:#fff; cursor:pointer;
-  background:var(--ink); padding:6px 13px; border-radius:99px;
+  font-size:12px; font-weight:700; color:#fff; cursor:pointer;
+  background:var(--ink); padding:9px 16px; border-radius:99px;
   box-shadow:0 3px 8px rgba(0,0,0,.12);
+  display:inline-flex; align-items:center; min-height:38px; border:none;
+  font-family:inherit; -webkit-tap-highlight-color:transparent;
 }
 .ck-btn.done { background:#e2e2e2; color:#777; box-shadow:none; }
 
-/* 离周末还有几天（摸鱼小组件） */
+/* 离周末还有几天（摸鱼小组件，v3.5.35 整体压缩：更矮更紧凑） */
 .weekend-box {
-  display:flex; align-items:center; justify-content:space-between; gap:10px;
-  border-radius:18px; padding:12px 14px; margin:0 2px 16px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:space-between; gap:8px;
+  border-radius:16px; padding:6px 12px; margin:0 2px 10px; flex-shrink:0;
 }
-.we-left { display:flex; flex-direction:column; gap:3px; }
-.we-days { font-size:15px; font-weight:700; color:var(--ink); letter-spacing:.5px; }
-.we-sub { font-size:10px; color:var(--muted); letter-spacing:1px; }
+.we-left { display:flex; flex-direction:column; gap:1px; }
+.we-days { font-size:13px; font-weight:700; color:var(--ink); letter-spacing:.5px; }
+.we-sub { font-size:9px; color:var(--muted); letter-spacing:1px; }
+/* v3.5.75 两行 grid 两列：摸鱼值列/工作值列 列宽一致完美对齐，间距清晰 */
 .we-ta {
-  display:block; margin-top:4px; font-size:11px; color:#555; font-weight:600;
+  display:grid; grid-template-columns:1fr 1fr; gap:16px;
+  margin-top:4px; font-size:10px; color:#555; font-weight:600;
 }
-.we-ta b { color:var(--ink); font-size:13px; }
+.we-ta .pair { display:flex; align-items:baseline; gap:5px; white-space:nowrap; }
+.we-ta .pair i { font-style:normal; }
+.we-ta .pair b { color:var(--ink); font-size:12px; font-weight:700; }
+/* v3.5.71 摸鱼值/工作值 间隔：清晰分隔、不再拤在一起 */
+.we-ta i { font-style:normal; }
+.we-sep {
+  font-style:normal; color:#c9c9c9; font-weight:400;
+  margin:0 10px; font-size:10px;
+}
 .we-btn {
-  flex-shrink:0; border:none; cursor:pointer; font-family:inherit;
-  background:var(--ink); color:#fff; font-size:13px; font-weight:700;
-  padding:9px 15px; border-radius:99px; box-shadow:0 3px 8px rgba(0,0,0,.25);
-  display:flex; align-items:center; gap:4px;
+  flex-shrink:0; align-self:flex-start; margin-top:2px;
+  border:none; cursor:pointer; font-family:inherit;
+  background:var(--ink); color:#fff; font-size:12px; font-weight:700;
+  padding:6px 11px; border-radius:99px; box-shadow:0 3px 8px rgba(0,0,0,.25);
+  display:flex; align-items:center; gap:3px;
 }
 .we-btn:active { transform:scale(.95); }
-.we-btn b { font-size:16px; }
+.we-btn b { font-size:13px; }
 
 /* 应用图标 */
 .app-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:22px 10px; padding:2px 8px 6px; }
@@ -150,14 +163,14 @@
 
 /* ---- 音乐播放器小组件（第二页） ---- */
 .music-widget {
-  border-radius:24px; padding:16px; margin-bottom:14px;
+  border-radius:22px; padding:13px; margin-top:14px; margin-bottom:14px;
   box-shadow:0 8px 20px rgba(0,0,0,.07);
 }
 .mw-head {
-  display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;
+  display:flex; align-items:center; justify-content:space-between; margin-bottom:9px;
 }
-.mw-tag { font-size:11px; color:var(--muted); letter-spacing:2px; font-weight:600; }
-.mw-bars { width:18px; height:18px; opacity:.35; transition:opacity .2s ease; }
+.mw-tag { font-size:10px; color:var(--muted); letter-spacing:2px; font-weight:600; }
+.mw-bars { width:15px; height:15px; opacity:.35; transition:opacity .2s ease; }
 /* 播放时：波形条跳动动画 */
 .mw-bars.playing { opacity:1; }
 .mw-bars.playing rect { animation:bar-bounce 1s infinite ease-in-out; transform-origin:center; }
@@ -170,10 +183,10 @@
   50% { transform:scaleY(1); }
 }
 
-.mw-main { display:flex; align-items:center; gap:14px; }
+.mw-main { display:flex; align-items:center; gap:12px; }
 .mw-cover { flex-shrink:0; }
 .mw-vinyl {
-  width:86px; height:86px; border-radius:50%;
+  width:70px; height:70px; border-radius:50%;
   background:radial-gradient(circle at 50% 50%, #2a2a2a 0%, #1a1a1a 55%, #3a3a3a 56%, #2e2e2e 100%);
   display:flex; align-items:center; justify-content:center;
   box-shadow:0 6px 14px rgba(0,0,0,.30), inset 0 0 0 1px rgba(255,255,255,.08);
@@ -204,13 +217,13 @@
 }
 
 .mw-controls {
-  display:flex; align-items:center; justify-content:space-between; margin-top:14px;
-  padding:0 6px;
+  display:flex; align-items:center; justify-content:space-between; margin-top:9px;
+  padding:0 4px;
 }
 .mw-btn { width:26px; height:26px; color:var(--ink); cursor:pointer; transition:transform .15s ease; }
 .mw-btn:hover { transform:scale(1.15); }
 .mw-play {
-  width:52px; height:52px; border-radius:50%;
+  width:46px; height:46px; border-radius:50%;
   background:#ffffff; color:#111111;
   display:flex; align-items:center; justify-content:center;
   border:1px solid rgba(0,0,0,.08);
@@ -221,20 +234,25 @@
 .mw-play svg { width:24px; height:24px; fill:#111111; }
 .mw-heart { width:24px; height:24px; cursor:pointer; transition:transform .15s ease; }
 .mw-heart:hover { transform:scale(1.15); }
-/* 收藏的歌曲：桌面部件爱心点亮（黑色实心） */
-.mw-heart.liked svg { fill:var(--ink); stroke:var(--ink); }
+/* 收藏的歌曲：桌面部件爱心点亮（红心，无黑描边——描边跟随 currentColor 自动变红） */
+
+/* 手机端：音乐控制按钮扩大点击热区（图标保持原大小） */
+.mw-controls .mw-btn, .mw-controls .mw-heart {
+  width:38px; height:38px; min-width:38px; min-height:38px;
+  display:flex; align-items:center; justify-content:center;
+}
 
 /* 音乐播放器封面（圆形：有封面显示专辑图，无封面显示音符占位） */
 #mw-cover {
   position:relative;
-  width:86px; height:86px; border-radius:50%;
+  width:70px; height:70px; border-radius:50%;
   background:#f1f1f1; overflow:hidden;
   box-shadow:0 4px 12px rgba(0,0,0,.1);
   border:1px solid rgba(0,0,0,.06);
   display:flex; align-items:center; justify-content:center;
 }
 #mw-cover .mw-cover-ico {
-  width:30px; height:30px; color:#b9b9b9;
+  width:24px; height:24px; color:#b9b9b9;
   transition:opacity .2s ease;
 }
 #mw-cover .mw-vinyl {
@@ -249,6 +267,7 @@
 }
 .mw-btn svg { width:26px; height:26px; }
 .mw-heart { background:transparent; border:none; padding:0; cursor:pointer; color:var(--ink); }
+.mw-heart svg { width:26px; height:26px; }
 .mw-heart.liked { color:#e05555; }
 .mw-heart.liked svg { fill:#e05555; }
 #mw-bar { cursor:pointer; }

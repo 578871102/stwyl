@@ -132,7 +132,8 @@
           { label: '圆形', value: 'circle' },
           { label: '方形', value: 'square' }
         ],
-        pill: store.get('cs-av-shape') || 'circle'
+        pill: store.get('cs-av-shape') || 'circle',
+        noInput: true
       });
     });
   }
@@ -179,7 +180,7 @@
     });
   }
 
-  // ================= 聊天气泡字体（上传本地字体 / 输入字体名或链接） =================
+  // ================= 全局字体（上传本地字体 / 输入字体名或链接，v3.5.34 起全局应用） =================
   const csFontRow = row('cs-font');
   const FONT_KEY = 'cs-font';
   function fontVal() { return store.get(FONT_KEY) || ''; }
@@ -195,25 +196,27 @@
       document.documentElement.style.fontFamily = '';
       return;
     }
-    // dataURL → @font-face 注入
+    // dataURL → @font-face 注入 + 全局应用（body/html 继承到全部页面，不只聊天）
     if (v.indexOf('data:') === 0) {
       const st = document.createElement('style');
       st.id = 'cs-font-style';
       st.textContent = '@font-face{font-family:"cs-custom-font";src:url("' + v + '");font-display:swap;}' +
-        '#chat-body,.msg-bubble,.msg-text{font-family:"cs-custom-font",sans-serif !important;}';
+        'body,html{font-family:"cs-custom-font",sans-serif !important;}';
       document.head.appendChild(st);
+      document.body.style.fontFamily = '';
+      document.documentElement.style.fontFamily = '';
       return;
     }
-    // 字体名直接应用
+    // 字体名直接应用（全局）
     document.body.style.fontFamily = '"' + v + '",sans-serif';
     document.documentElement.style.fontFamily = '"' + v + '",sans-serif';
   }
   if (csFontRow) {
     csFontRow.addEventListener('click', () => {
       if (!window.openTCPanel) return;
-      window.openTCPanel('聊天气泡字体', '' +
-        '<div class="sm-fld"><label>上传本地字体（ttf / otf / woff / woff2）</label>' +
-        '<input class="tc-input" id="cs-font-name" placeholder="也可直接输入字体名，如 Microsoft YaHei"' + (fontVal() && fontVal().indexOf('data:') !== 0 && fontVal().indexOf('http') !== 0 ? ' value="' + fontVal() + '"' : '') + '></div>' +
+      window.openTCPanel('全局字体', '' +
+        '<div class="sm-fld"><label>上传本地字体（ttf / otf / woff / woff2），应用后全局生效</label>' +
+        '<input class="tc-input" id="cs-font-name" placeholder="也可直接输入字体名或链接，如 Microsoft YaHei"' + (fontVal() && fontVal().indexOf('data:') !== 0 && fontVal().indexOf('http') !== 0 ? ' value="' + fontVal() + '"' : '') + '></div>' +
         '<div class="mail-actions"><button class="cc-tool" id="cs-font-upload">上传字体</button><button class="cc-tool" id="cs-font-clear">恢复默认</button><button class="cc-tool" id="cs-font-ok">应用</button></div>');
       document.getElementById('cs-font-upload').addEventListener('click', () => {
         const inp = document.createElement('input');
@@ -222,13 +225,15 @@
         inp.onchange = () => {
           const f = inp.files && inp.files[0];
           if (!f) return;
+          toast('正在读取字体文件…');
           const reader = new FileReader();
           reader.onload = () => {
             store.set(FONT_KEY, reader.result);
             document.getElementById('tc-mask').hidden = true;
             applyFont();
-            toast('字体已应用');
+            toast('字体已应用成功');
           };
+          reader.onerror = () => { toast('字体文件读取失败，请重试'); };
           reader.readAsDataURL(f);
         };
         inp.click();
@@ -241,30 +246,40 @@
       });
       document.getElementById('cs-font-ok').addEventListener('click', () => {
         const name = (document.getElementById('cs-font-name').value || '').trim();
-        if (!name) { toast('请输入字体名'); return; }
-        // 链接：尝试下载并转 dataURL（失败则按字体名应用）
+        if (!name) { toast('请输入字体名或链接'); return; }
+        // 链接：尝试下载并转 dataURL（失败则按字体名应用）；下载期间先提示，避免"没反应"
         if (/^https?:\/\/.+\.(ttf|otf|woff|woff2)$/i.test(name)) {
-          fetch(name, { mode: 'cors' }).then(r => r.blob()).then(blob => {
+          toast('正在下载字体，请稍候…');
+          fetch(name, { mode: 'cors' }).then(r => {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.blob();
+          }).then(blob => {
             const rd = new FileReader();
             rd.onload = () => {
               store.set(FONT_KEY, rd.result);
               document.getElementById('tc-mask').hidden = true;
               applyFont();
-              toast('字体已应用');
+              toast('字体下载并应用成功');
+            };
+            rd.onerror = () => {
+              store.set(FONT_KEY, name);
+              document.getElementById('tc-mask').hidden = true;
+              applyFont();
+              toast('字体读取失败，已按字体名应用');
             };
             rd.readAsDataURL(blob);
           }).catch(() => {
             store.set(FONT_KEY, name);
             document.getElementById('tc-mask').hidden = true;
             applyFont();
-            toast('字体已应用（链接读取失败，已按字体名应用）');
+            toast('链接下载失败，已按字体名应用');
           });
           return;
         }
         store.set(FONT_KEY, name);
         document.getElementById('tc-mask').hidden = true;
         applyFont();
-        toast('字体已应用');
+        toast('字体已应用成功');
       });
     });
   }

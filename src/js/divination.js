@@ -8,30 +8,30 @@
   let mode = 'tarot';
   let count = 3;
 
-  // ---- 塔罗 22 张大阿卡纳（矢量图标 + 牌名 + 正逆位寓意）----
+  // ---- 塔罗 22 张大阿卡纳（矢量图标 + 牌名 + 正逆位寓意 + 详细解读）----
   const TAROT = [
-    { name: '愚人', icon: 'sun', pos: '新的开始，勇敢出发。', neg: '鲁莽行事，需三思。' },
-    { name: '魔术师', icon: 'wand', pos: '掌握资源，心想事成。', neg: '空想多于行动。' },
-    { name: '女祭司', icon: 'moon', pos: '直觉敏锐，静观其变。', neg: '忽视内心的声音。' },
-    { name: '皇后', icon: 'flower', pos: '丰盛滋养，温柔以待。', neg: '过度付出忽略自己。' },
-    { name: '皇帝', icon: 'crown', pos: '稳固掌控，责任担当。', neg: '固执己见，控制过强。' },
-    { name: '教皇', icon: 'book', pos: '遵循传统，获得指引。', neg: '墨守成规，缺乏变通。' },
-    { name: '恋人', icon: 'heart', pos: '选择与联结，心意相通。', neg: '摇摆不定，沟通受阻。' },
-    { name: '战车', icon: 'chariot', pos: '坚定前进，掌控方向。', neg: '失去方向，内耗拉扯。' },
-    { name: '力量', icon: 'lion', pos: '温柔的力量，勇气在心。', neg: '缺乏自信，逞强硬撑。' },
-    { name: '隐士', icon: 'lamp', pos: '独处思考，寻找答案。', neg: '孤僻封闭，拒绝帮助。' },
-    { name: '命运之轮', icon: 'wheel', pos: '时来运转，顺势而行。', neg: '运势波动，随遇而安。' },
-    { name: '正义', icon: 'scales', pos: '公平公正，理性裁决。', neg: '偏见失衡，犹豫不决。' },
-    { name: '倒吊人', icon: 'hanged', pos: '换个角度，暂停思考。', neg: '无谓牺牲，停滞不前。' },
-    { name: '死神', icon: 'skull', pos: '结束与新生，翻篇向前。', neg: '抗拒改变，迟迟不放。' },
-    { name: '节制', icon: 'cup', pos: '平衡调和，恰到好处。', neg: '失衡过度，缺乏节制。' },
-    { name: '恶魔', icon: 'devil', pos: '看清执念，挣脱束缚。', neg: '深陷欲望，难以自拔。' },
-    { name: '高塔', icon: 'tower', pos: '突变的觉醒，打破僵局。', neg: '恐慌不安，逃避现实。' },
-    { name: '星星', icon: 'star', pos: '希望之光，心愿可期。', neg: '信心受挫，暂时暗淡。' },
-    { name: '月亮', icon: 'crescent', pos: '直觉与幻象，看清真相。', neg: '不安迷惘，被情绪困住。' },
-    { name: '太阳', icon: 'sunny', pos: '光明坦途，喜悦丰收。', neg: '短暂的阴霾，乐观仍在。' },
-    { name: '审判', icon: 'trumpet', pos: '觉醒重生，重要抉择。', neg: '悔恨自省，难以原谅。' },
-    { name: '世界', icon: 'globe', pos: '圆满达成，新的循环。', neg: '功亏一篑，尚需收尾。' }
+    { name: '愚人', icon: 'sun', pos: '新的开始，勇敢出发。', neg: '鲁莽行事，需三思。', detail: '天真无畏的开端。此刻最适合跟随直觉迈出第一步，别怕未知，路上自有风景与贵人。' },
+    { name: '魔术师', icon: 'wand', pos: '掌握资源，心想事成。', neg: '空想多于行动。', detail: '你手中早已握有需要的资源与能力。把想法落到行动上，主动出击，一切皆可成。' },
+    { name: '女祭司', icon: 'moon', pos: '直觉敏锐，静观其变。', neg: '忽视内心的声音。', detail: '答案不在表面，而在直觉与静默之中。慢下来倾听内心，你会知道该怎么做。' },
+    { name: '皇后', icon: 'flower', pos: '丰盛滋养，温柔以待。', neg: '过度付出忽略自己。', detail: '温柔与丰盛正在靠近。好好照顾自己，也大方接纳身边的美好与爱意。' },
+    { name: '皇帝', icon: 'crown', pos: '稳固掌控，责任担当。', neg: '固执己见，控制过强。', detail: '秩序与责任带来稳固。用理性掌控局面，你比想象中更有力量。' },
+    { name: '教皇', icon: 'book', pos: '遵循传统，获得指引。', neg: '墨守成规，缺乏变通。', detail: '此时遵循经验与传统会更有帮助。向信任的人请教，会得到可靠的指引。' },
+    { name: '恋人', icon: 'heart', pos: '选择与联结，心意相通。', neg: '摇摆不定，沟通受阻。', detail: '重要的选择与联结正在发生。诚实面对心意，彼此靠近才能走得更远。' },
+    { name: '战车', icon: 'chariot', pos: '坚定前进，掌控方向。', neg: '失去方向，内耗拉扯。', detail: '方向已经明确，只管坚定向前。专注目标，别被路上的杂音分心。' },
+    { name: '力量', icon: 'lion', pos: '温柔的力量，勇气在心。', neg: '缺乏自信，逞强硬撑。', detail: '真正的力量是温柔与耐心。以柔克刚，你能化解眼前的难题。' },
+    { name: '隐士', icon: 'lamp', pos: '独处思考，寻找答案。', neg: '孤僻封闭，拒绝帮助。', detail: '独处的时光正是成长的养分。给自己一点安静，答案会自己浮现。' },
+    { name: '命运之轮', icon: 'wheel', pos: '时来运转，顺势而行。', neg: '运势波动，随遇而安。', detail: '时机正在转动，顺势而为。抓住变化的窗口，好运悄然靠近。' },
+    { name: '正义', icon: 'scales', pos: '公平公正，理性裁决。', neg: '偏见失衡，犹豫不决。', detail: '因果分明，公道自在人心。坦然面对决定，真实会被看见。' },
+    { name: '倒吊人', icon: 'hanged', pos: '换个角度，暂停思考。', neg: '无谓牺牲，停滞不前。', detail: '换个角度看问题，也许困局另有出口。暂停不是放弃，是为了更好的出发。' },
+    { name: '死神', icon: 'skull', pos: '结束与新生，翻篇向前。', neg: '抗拒改变，迟迟不放。', detail: '旧章已经翻过，新页正在展开。放下执念，改变会带来意想不到的礼物。' },
+    { name: '节制', icon: 'cup', pos: '平衡调和，恰到好处。', neg: '失衡过度，缺乏节制。', detail: '一切讲究平衡。恰到好处的付出与等待，会让事情走向圆满。' },
+    { name: '恶魔', icon: 'devil', pos: '看清执念，挣脱束缚。', neg: '深陷欲望，难以自拔。', detail: '看清什么在捆绑你。放下执念与贪求，你会发现自由其实唾手可得。' },
+    { name: '高塔', icon: 'tower', pos: '突变的觉醒，打破僵局。', neg: '恐慌不安，逃避现实。', detail: '突如其来的变化带来清醒。打破旧结构，反而会开启真正的成长。' },
+    { name: '星星', icon: 'star', pos: '希望之光，心愿可期。', neg: '信心受挫，暂时暗淡。', detail: '希望与心愿在远方发光。保持相信，你的愿望正在一步步靠近。' },
+    { name: '月亮', icon: 'crescent', pos: '直觉与幻象，看清真相。', neg: '不安迷惘，被情绪困住。', detail: '真相藏在情绪与幻象之下。别急着下结论，看清之后再做决定。' },
+    { name: '太阳', icon: 'sunny', pos: '光明坦途，喜悦丰收。', neg: '短暂的阴霾，乐观仍在。', detail: '光明坦荡，喜悦将至。大胆展示真实的自己，好运自会相迎。' },
+    { name: '审判', icon: 'trumpet', pos: '觉醒重生，重要抉择。', neg: '悔恨自省，难以原谅。', detail: '觉醒的时刻到了。回望过去，原谅自己，然后带着清明重新出发。' },
+    { name: '世界', icon: 'globe', pos: '圆满达成，新的循环。', neg: '功亏一篑，尚需收尾。', detail: '一段旅程圆满落幕。好好庆祝，也准备好迎接新的开始。' }
   ];
   const TAROT_ICONS = {
     sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
@@ -58,48 +58,48 @@
     globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 010 18M12 3a15 15 0 000 18"/>'
   };
 
-  // ---- 雷诺曼 40 张（矢量图标 + 寓意）----
+  // ---- 雷诺曼 40 张（矢量图标 + 寓意 + 详细解读）----
   const LENO = [
-    { name: '骑士', icon: 'horse', meaning: '迅速的行动与消息。' },
-    { name: '四叶草', icon: 'clover', meaning: '小小的幸运与惊喜。' },
-    { name: '船', icon: 'ship', meaning: '远行与旅程。' },
-    { name: '房子', icon: 'house', meaning: '安稳的归属。' },
-    { name: '树', icon: 'tree', meaning: '成长与健康。' },
-    { name: '云', icon: 'cloud', meaning: '暂时的迷雾与不确定。' },
-    { name: '蛇', icon: 'snake', meaning: '潜在的考验与转折。' },
-    { name: '棺材', icon: 'coffin', meaning: '结束与新的开始。' },
-    { name: '花束', icon: 'bouquet', meaning: '美好与馈赠。' },
-    { name: '镰刀', icon: 'scythe', meaning: '果断的切割。' },
-    { name: '鞭子', icon: 'whip', meaning: '反复与提醒。' },
-    { name: '鸟', icon: 'bird', meaning: '交谈与消息。' },
-    { name: '孩子', icon: 'child', meaning: '新生的开始。' },
-    { name: '狐狸', icon: 'fox', meaning: '机智与谨慎。' },
-    { name: '熊', icon: 'bear', meaning: '力量与保护。' },
-    { name: '星星', icon: 'star', meaning: '愿望与指引。' },
-    { name: '鹤', icon: 'stork', meaning: '变化与喜讯。' },
-    { name: '狗', icon: 'dog', meaning: '忠诚的陪伴。' },
-    { name: '塔', icon: 'tower', meaning: '独立与高度。' },
-    { name: '花园', icon: 'garden', meaning: '聚会与社交。' },
-    { name: '山', icon: 'mountain', meaning: '挑战与坚持。' },
-    { name: '路口', icon: 'crossroad', meaning: '面临选择。' },
-    { name: '老鼠', icon: 'mouse', meaning: '细小的损耗。' },
-    { name: '心', icon: 'heart', meaning: '真挚的情感。' },
-    { name: '戒指', icon: 'ring', meaning: '承诺与契约。' },
-    { name: '信', icon: 'letter', meaning: '书面的消息。' },
-    { name: '书', icon: 'book', meaning: '知识或秘密。' },
-    { name: '男人', icon: 'man', meaning: '一位重要的男性。' },
-    { name: '女人', icon: 'woman', meaning: '一位重要的女性。' },
-    { name: '百合', icon: 'lily', meaning: '平静与纯净。' },
-    { name: '太阳', icon: 'sunny', meaning: '成功与光明。' },
-    { name: '月亮', icon: 'crescent', meaning: '直觉与情感。' },
-    { name: '钥匙', icon: 'key', meaning: '答案与机会。' },
-    { name: '鱼', icon: 'fish', meaning: '富足与资源。' },
-    { name: '锚', icon: 'anchor', meaning: '稳定与安全。' },
-    { name: '十字架', icon: 'cross', meaning: '信念与考验。' },
-    { name: '灵体', icon: 'spirit', meaning: '直觉与灵感。' },
-    { name: '香炉', icon: 'incense', meaning: '沉淀与净化。' },
-    { name: '床', icon: 'bed', meaning: '休息与私密。' },
-    { name: '市场', icon: 'market', meaning: '交易与机会。' }
+    { name: '骑士', icon: 'horse', meaning: '迅速的行动与消息。', detail: '有消息正快速赶来，行动要快，机会不等人。' },
+    { name: '四叶草', icon: 'clover', meaning: '小小的幸运与惊喜。', detail: '小小的幸运正在靠近，别错过手边的机会。' },
+    { name: '船', icon: 'ship', meaning: '远行与旅程。', detail: '一段新的旅程或变动即将展开，走出去会有收获。' },
+    { name: '房子', icon: 'house', meaning: '安稳的归属。', detail: '安稳与归属感，家和熟悉的环境给你力量。' },
+    { name: '树', icon: 'tree', meaning: '成长与健康。', detail: '健康与成长，慢而稳地扎根，终会枝繁叶茂。' },
+    { name: '云', icon: 'cloud', meaning: '暂时的迷雾与不确定。', detail: '眼前有些迷雾，等它散去再做决定也不迟。' },
+    { name: '蛇', icon: 'snake', meaning: '潜在的考验与转折。', detail: '留意潜在的小转折，谨慎行事，别有疏漏。' },
+    { name: '棺材', icon: 'coffin', meaning: '结束与新的开始。', detail: '结束即开始，清理旧物旧事，才能迎来新气象。' },
+    { name: '花束', icon: 'bouquet', meaning: '美好与馈赠。', detail: '收到馈赠或美好，心情愉快，值得好好珍惜。' },
+    { name: '镰刀', icon: 'scythe', meaning: '果断的切割。', detail: '果断切断消耗你的事物，干净利落反而轻松。' },
+    { name: '鞭子', icon: 'whip', meaning: '反复与提醒。', detail: '反复出现的提醒，重视它，别一再绕开。' },
+    { name: '鸟', icon: 'bird', meaning: '交谈与消息。', detail: '交谈与消息频繁，多沟通，信息里有答案。' },
+    { name: '孩子', icon: 'child', meaning: '新生的开始。', detail: '一个全新的开始，保持天真，一切皆有可能。' },
+    { name: '狐狸', icon: 'fox', meaning: '机智与谨慎。', detail: '多留个心眼，聪明应对，别轻信表面。' },
+    { name: '熊', icon: 'bear', meaning: '力量与保护。', detail: '力量与守护，依靠坚定的后盾，大胆前行。' },
+    { name: '星星', icon: 'star', meaning: '愿望与指引。', detail: '愿望有指引，许愿正当时，保持相信。' },
+    { name: '鹤', icon: 'stork', meaning: '变化与喜讯。', detail: '好消息临近，变动带来喜讯，静候佳音。' },
+    { name: '狗', icon: 'dog', meaning: '忠诚的陪伴。', detail: '忠诚与陪伴，可靠的朋友就在身边。' },
+    { name: '塔', icon: 'tower', meaning: '独立与高度。', detail: '独立与高度，站得高看得远，格局打开。' },
+    { name: '花园', icon: 'garden', meaning: '聚会与社交。', detail: '聚会与社交，人际往来会带来新机会。' },
+    { name: '山', icon: 'mountain', meaning: '挑战与坚持。', detail: '前路有挑战，坚持就是胜利，翻过山就好。' },
+    { name: '路口', icon: 'crossroad', meaning: '面临选择。', detail: '面临选择，倾听内心的声音，路在脚下。' },
+    { name: '老鼠', icon: 'mouse', meaning: '细小的损耗。', detail: '细小损耗在发生，及时止损，别让小问题变大。' },
+    { name: '心', icon: 'heart', meaning: '真挚的情感。', detail: '真挚的情感，感情上会有回应，大胆表达。' },
+    { name: '戒指', icon: 'ring', meaning: '承诺与契约。', detail: '承诺与契约，重要关系更进一步，值得期待。' },
+    { name: '信', icon: 'letter', meaning: '书面的消息。', detail: '书面消息将带来答案，留意来信与文字。' },
+    { name: '书', icon: 'book', meaning: '知识或秘密。', detail: '知识或秘密，深入学习会有所得，也守好秘密。' },
+    { name: '男人', icon: 'man', meaning: '一位重要的男性。', detail: '一位重要的男性将带来影响，留意他的态度。' },
+    { name: '女人', icon: 'woman', meaning: '一位重要的女性。', detail: '一位重要的女性将带来影响，多听听她的看法。' },
+    { name: '百合', icon: 'lily', meaning: '平静与纯净。', detail: '平静与纯净，心绪归宁，沉淀之后更清明。' },
+    { name: '太阳', icon: 'sunny', meaning: '成功与光明。', detail: '成功与光明，事情终将明朗，全力以赴即可。' },
+    { name: '月亮', icon: 'crescent', meaning: '直觉与情感。', detail: '直觉与情感，夜晚适合倾听内心，跟随感受。' },
+    { name: '钥匙', icon: 'key', meaning: '答案与机会。', detail: '答案与机会就在手边，去开启它，别犹豫。' },
+    { name: '鱼', icon: 'fish', meaning: '富足与资源。', detail: '富足与资源，财运转好，善用流动的机会。' },
+    { name: '锚', icon: 'anchor', meaning: '稳定与安全。', detail: '稳定与安全，心有所系，根基牢固。' },
+    { name: '十字架', icon: 'cross', meaning: '信念与考验。', detail: '信念受考验，坚持初心，熬过即是成长。' },
+    { name: '灵体', icon: 'spirit', meaning: '直觉与灵感。', detail: '直觉与灵感增强，相信第六感，它会带路。' },
+    { name: '香炉', icon: 'incense', meaning: '沉淀与净化。', detail: '沉淀与净化，清空杂念，轻装上阵。' },
+    { name: '床', icon: 'bed', meaning: '休息与私密。', detail: '休息与私密，好好休整，睡眠也是疗愈。' },
+    { name: '市场', icon: 'market', meaning: '交易与机会。', detail: '交易与机会，新的可能正在酝酿，值得一试。' }
   ];
   const LENO_ICONS = {
     horse: '<path d="M4 16l3-4 5 0 4-6 3 2-1 4 3 4M7 12l-3 2M4 18h3"/>',
@@ -146,9 +146,15 @@
 
   // 牌阵标签（星言 modeLabels）
   const MODE_LABELS = {
-    tarot: { 1: ['运势'], 3: ['过去', '现在', '未来'], 7: ['启示', '过去', '现在', '未来', '核心', '阻碍', '根源'] },
-    lenormand: { 1: ['回复'], 3: ['回复 1', '回复 2', '回复 3'], 7: ['回复 1', '回复 2', '回复 3', '回复 4', '回复 5', '回复 6', '回复 7'] }
+    tarot: { 1: ['运势'], 3: ['过去', '现在', '未来'] },
+    lenormand: { 1: ['回复'], 3: ['回复 1', '回复 2', '回复 3'] }
   };
+  // v3.5.53：牌库暴露给聊天页占卜半框复用
+  window.__TAROT__ = TAROT;
+  window.__LENO__ = LENO;
+  window.__TAROT_ICONS__ = TAROT_ICONS;
+  window.__LENO_ICONS__ = LENO_ICONS;
+  window.__MODE_LABELS__ = MODE_LABELS;
 
   // 模式/张数切换
   const modesWrap = document.getElementById('div-modes');
@@ -186,13 +192,109 @@
     }
     return b;
   }
-  function cardHtml(ico, name, meaning, label, rev) {
-    return '<div class="div-card-face div-mini">' +
-      (label ? '<div class="div-mini-tag">' + label + '</div>' : '') +
-      '<div class="div-card-ico">' + ico + '</div>' +
-      '<div class="div-card-name">' + (rev ? name + '（逆）' : name) + '</div>' +
-      '<div class="div-card-meaning">' + meaning + '</div>' +
-      '</div>';
+
+  // ---- 综合解读（一句话总运势 + 问题呼应）----
+  function partnerName2() {
+    const n = storeName();
+    return n ? n : '';
+  }
+  function storeName() { try { return localStorage.getItem('xy-home-v2:lbl-partner') || ''; } catch (e) { return ''; } }
+  function buildSummary(cards, mode, question) {
+    let line = '';
+    if (mode === 'tarot') {
+      const revCount = cards.filter(c => c.rev).length;
+      const posCount = cards.length - revCount;
+      if (revCount === 0) line = '牌面全数正位，气运正盛。近期的选择与努力大多会得到回报，可以大胆前行。';
+      else if (posCount === 0) line = '牌面全数逆位，眼下更需要稳住心神。放缓节奏、少做重大决定，等迷雾散去再做打算。';
+      else if (posCount > revCount) line = '牌面整体偏正，虽有波折但大势向好。把握核心目标，好运正在靠近。';
+      else line = '牌面正逆交织，前路有起伏。越是这种时候，越要回到自己的节奏里，稳稳走好每一步。';
+    } else {
+      line = cards.map(c => '「' + c.name + '」' + c.meaning).join(' ');
+    }
+    if (question) {
+      line += '就你问的「' + question + '」：' + (mode === 'tarot'
+        ? '顺着牌面的大势走，答案会在合适的时候到来。'
+        : '保持开放的心态，答案往往在行动中显现。');
+    }
+    return line;
+  }
+  // ---- 占卜记录（保存全部历史）----
+  const HIST_KEY = 'divine-history';
+  function histLoad() { try { return JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); } catch (e) { return []; } }
+  function histSave(list) { try { localStorage.setItem(HIST_KEY, JSON.stringify(list)); } catch (e) {} }
+  function fmtDT(ts) {
+    const d = new Date(ts);
+    const p = (n) => (n < 10 ? '0' + n : '' + n);
+    return (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+  function renderHistory() {
+    const el = document.getElementById('div-history');
+    if (!el) return;
+    const list = histLoad();
+    el.innerHTML = list.length
+      ? '<div class="div-label">占卜记录</div>' + list.map((h, i) =>
+          '<div class="div-h-item" data-hi="' + i + '">' +
+          '<div class="div-h-main"><div class="div-h-title">' + (h.mode === 'tarot' ? '塔罗' : '雷诺曼') + ' · ' + h.count + ' 张' +
+          (h.question ? ' · 问：' + String(h.question).replace(/</g, '&lt;') : '') + '</div>' +
+          '<div class="div-h-sub">' + fmtDT(h.ts) + ' · ' + h.cards.map(c => c.name + (c.rev ? '(逆)' : '')).join('、') + '</div></div>' +
+          '<button class="div-h-view" data-hi="' + i + '">查看</button>' +
+          '<button class="div-h-del" data-hi="' + i + '">✕</button>' +
+          '</div>').join('')
+      : '';
+    el.querySelectorAll('.div-h-view').forEach(b => b.addEventListener('click', () => {
+      const h = histLoad()[parseInt(b.dataset.hi, 10)];
+      if (h) renderDrawResult(h.cards, h.mode, h.question, h.summary);
+    }));
+    el.querySelectorAll('.div-h-del').forEach(b => b.addEventListener('click', () => {
+      const list = histLoad();
+      list.splice(parseInt(b.dataset.hi, 10), 1);
+      histSave(list);
+      renderHistory();
+    }));
+  }
+  // 渲染抽牌结果（灰底正方形牌面 + 动画、综合解读、发送按钮）
+  function renderDrawResult(cards, m, question, summary) {
+    const r = document.getElementById('div-result');
+    if (!r) return;
+    const icons = m === 'tarot' ? TAROT_ICONS : LENO_ICONS;
+    const labels = (MODE_LABELS[m] && MODE_LABELS[m][cards.length]) || [];
+    let html = '<div class="div-spread">';
+    cards.forEach((c, i) => {
+      html += '<div class="div-mini' + (cards.length === 1 ? ' div-mini-single' : '') + '" style="animation-delay:' + (i * 120) + 'ms">' +
+        (labels[i] ? '<div class="div-mini-tag">' + labels[i] + '</div>' : '') +
+        '<div class="div-card-face">' +
+          '<div class="div-card-ico">' + icons[c.icon] + '</div>' +
+          '<div class="div-card-name">' + (c.rev ? c.name + '（逆）' : c.name) + '</div>' +
+        '</div>' +
+        '<div class="div-card-meaning">' + c.meaning + '</div>' +
+        '</div>';
+    });
+    html += '</div>';
+    html += '<div class="div-summary">' + summary + '</div>';
+    if (question) html += '<div class="div-question-q">问：' + String(question).replace(/</g, '&lt;') + '</div>';
+    html += '<button class="div-send-btn" id="div-send-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;vertical-align:-3px;margin-right:6px"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>把占卜结果发给 ' + (partnerName2() || 'TA') + '</button>';
+    r.innerHTML = html;
+    const sendBtn = document.getElementById('div-send-btn');
+    if (sendBtn) sendBtn.addEventListener('click', () => sendToChat(m, cards, summary, question));
+  }
+  function sendToChat(m, cards, summary, question) {
+    const modeTxt = m === 'tarot' ? '塔罗' : '雷诺曼';
+    let text = '🔮 占卜 · ' + modeTxt + ' ' + cards.length + ' 张\n';
+    cards.forEach((c, i) => {
+      const labels = (MODE_LABELS[m] && MODE_LABELS[m][cards.length]) || [];
+      text += '【' + (labels[i] || ('位置' + (i + 1))) + '】' + c.name + (c.rev ? '（逆）' : '') + '：' + c.meaning + '\n';
+    });
+    text += '综合：' + summary;
+    if (window.chatSendMsg) { window.chatSendMsg(text); toast('已发送给 ' + (partnerName2() || 'TA')); }
+    else toast('请先进入聊天页');
+  }
+  function toast(msg) {
+    let t = document.getElementById('cc-toast');
+    if (!t) { t = document.createElement('div'); t.id = 'cc-toast'; document.body.appendChild(t); }
+    t.textContent = msg;
+    t.className = 'cc-toast show';
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
   }
 
   // 抽牌
@@ -201,27 +303,28 @@
     drawBtn.addEventListener('click', () => {
       const r = document.getElementById('div-result');
       if (!r) return;
-      const question = (document.getElementById('div-question') || {}).value || '';
-      let html = '';
-      const deck = mode === 'tarot' ? TAROT : LENO;
-      const icons = mode === 'tarot' ? TAROT_ICONS : LENO_ICONS;
-      const labels = (MODE_LABELS[mode] && MODE_LABELS[mode][count]) || [];
-      const cards = shuf(deck).slice(0, count);
-      html += '<div class="div-spread' + (count > 3 ? ' spread7' : '') + '">';
-      cards.forEach((c, i) => {
-        let rev = false, meaning = c.meaning;
-        if (mode === 'tarot') {
-          rev = Math.random() > 0.5;
-          meaning = rev ? c.neg : c.pos;
-        }
-        html += cardHtml(icons[c.icon], c.name, meaning, labels[i] || '', rev);
-      });
-      html += '</div>';
-      // 综合
-      const names = shuf(deck).slice(0, 2).map(c => c.name).join(' · ');
-      html += '<div class="div-summary">综合解读：' + names + '</div>';
-      if (question) html += '<div class="div-card-meaning" style="opacity:.6;text-align:center;margin-top:8px">问：' + question + '</div>';
-      r.innerHTML = html;
+      const question = ((document.getElementById('div-question') || {}).value || '').trim();
+      // 洗牌动画：先显示洗牌中，再翻出结果
+      r.innerHTML = '<div class="div-result-empty">🔮 洗牌中…</div>';
+      setTimeout(() => {
+        const deck = mode === 'tarot' ? TAROT : LENO;
+        const labels = (MODE_LABELS[mode] && MODE_LABELS[mode][count]) || [];
+        const cards = shuf(deck).slice(0, count).map(c => {
+          const out = { name: c.name, icon: c.icon, rev: false, meaning: c.meaning, detail: c.detail || '' };
+          if (mode === 'tarot') {
+            out.rev = Math.random() > 0.5;
+            out.meaning = out.rev ? c.neg : c.pos;
+          }
+          return out;
+        });
+        const summary = buildSummary(cards, mode, question);
+        renderDrawResult(cards, mode, question, summary);
+        // 保存记录
+        const list = histLoad();
+        list.unshift({ ts: Date.now(), mode: mode, count: count, question: question, cards: cards, summary: summary });
+        histSave(list);
+        renderHistory();
+      }, 900);
     });
   }
 

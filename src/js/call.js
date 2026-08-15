@@ -22,6 +22,76 @@
     };
   }
 
+  // 通话背景（v3.5.50）：设置页上传图片 → 应用到大面板 + 通话小框
+  const CALL_BG_KEY = 'call-bg';
+  function applyCallBg() {
+    const bg = store.get(CALL_BG_KEY) || '';
+    const panel = document.querySelector('.call-panel');
+    const miniEl = document.getElementById('call-mini');
+    [panel, miniEl].forEach(el => {
+      if (!el) return;
+      if (bg) {
+        el.style.backgroundImage = 'url("' + bg + '")';
+        el.style.backgroundSize = 'cover';
+        el.style.backgroundPosition = 'center';
+        el.classList.add('has-bg');
+      } else {
+        el.style.backgroundImage = '';
+        el.classList.remove('has-bg');
+      }
+    });
+    const val = document.getElementById('call-bg-val');
+    if (val) val.textContent = bg ? '已设置' : '默认';
+    const rm = document.getElementById('call-bg-remove');
+    if (rm) rm.hidden = !bg;
+  }
+  const callBgRow = document.getElementById('call-bg-row');
+  if (callBgRow) {
+    callBgRow.addEventListener('click', () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = () => {
+        const f = input.files && input.files[0];
+        if (!f) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            try {
+              const scale = Math.min(1, 600 / Math.max(img.width, img.height));
+              const c = document.createElement('canvas');
+              c.width = Math.max(1, Math.round(img.width * scale));
+              c.height = Math.max(1, Math.round(img.height * scale));
+              c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+              const data = c.toDataURL('image/jpeg', 0.85);
+              store.set(CALL_BG_KEY, data);
+              applyCallBg();
+              toast('通话背景已设置');
+            } catch (e) {
+              toast('图片处理失败');
+            }
+          };
+          img.onerror = () => toast('图片读取失败');
+          img.src = reader.result;
+        };
+        reader.onerror = () => toast('图片读取失败');
+        reader.readAsDataURL(f);
+      };
+      input.click();
+    });
+  }
+  const callBgRm = document.getElementById('call-bg-remove');
+  if (callBgRm) {
+    callBgRm.addEventListener('click', () => {
+      try { localStorage.removeItem(uid + ':' + CALL_BG_KEY); } catch (e) {}
+      applyCallBg();
+      toast('已恢复默认通话背景');
+    });
+  }
+  applyCallBg();
+
+  // ---- 来电 / 去电 / 通话中 ----
   let currentCall = null; // { direction, status, startTime, connectedTime, timer }
   let durationTimer = null;
 
@@ -111,18 +181,30 @@
       }
     }, 1000);
   }
-  // 结束通话：清界面 + 聊天消息 + 记录
+  // 结束通话：清界面 + 聊天系统消息（接通过必带时长）+ 记录
+  // v3.5.51：真实时长从 startTime 计算（覆盖对方挂断/不明原因中断路径）；
+  //   接通后结束 → 系统消息明确「通话已挂断 / 对方已挂断 · 时长 xx」
   function endCall(text) {
     stopTimers();
     if (mask) mask.hidden = true;
     if (mini) mini.hidden = true;
     if (cdEl) cdEl.hidden = true;
     if (currentCall) {
-      const dur = currentCall.durationSec || 0;
+      // 真实通话时长：durationSec（接通后已计时）兜底用 startTime 计算
+      const dur = currentCall.durationSec || Math.max(0, Math.floor((Date.now() - currentCall.startTime) / 1000));
       const dir = currentCall.direction;
       const name = partnerName();
+      const durTxt = dur > 0 ? ' · 时长 ' + fmtDur(dur) : '';
+      // 接通过 → 系统消息明确「挂断/对方挂断/中断 + 时长」；未接通保持原结果文案
+      let resText = text;
+      if (dur > 0) {
+        if (text === '对方挂断了电话') resText = '对方已挂断';
+        else if (text === '已挂断') resText = '通话已挂断';
+        else resText = '通话已结束'; // 不明原因中断等
+        resText += durTxt;
+      }
       if (window.chatAddSystem) {
-        window.chatAddSystem('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>' +  (dir === 'in' ? name + ' 来电' : '我拨打 ' + name) + ' · ' + text + (dur ? '（' + fmtDur(dur) + '）' : ''));
+        window.chatAddSystem('<svg class="st-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>' + (dir === 'in' ? name + ' 来电' : '我拨打 ' + name) + ' · ' + resText);
       }
       if (window.addCallRecord) window.addCallRecord(dir, text + (dur ? '（' + fmtDur(dur) + '）' : ''));
     }
@@ -131,6 +213,8 @@
   // 来电
   function incomingCall() {
     if (currentCall) return;
+    // v3.5.60：来电播放设置的铃声音效
+    if (window.playSfx) window.playSfx('ring');
     const name = partnerName();
     currentCall = { direction: 'in', status: 'ringing', startTime: Date.now(), durationSec: 0 };
     fillAv(avEl, partnerAv());

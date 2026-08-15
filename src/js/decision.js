@@ -37,12 +37,19 @@
   let activeTab = 'typea';
   let countdownTimer = null;
 
-  // ---- 弹层 ----
+  // ---- 聊天页底部半框（v3.5.53 露出聊天消息，星言式）----
   function openPanel() {
-    if (!window.openTCPanel) return;
+    const body = document.getElementById('chat-decision-body');
+    const panel = document.getElementById('chat-decision-panel');
+    if (!body || !panel) return;
     activeTab = 'typea';
-    window.openTCPanel('帮我决定', panelHtml());
+    body.innerHTML = panelHtml();
+    panel.hidden = false;
     bindEvents();
+  }
+  function closePanel() {
+    const panel = document.getElementById('chat-decision-panel');
+    if (panel) panel.hidden = true;
   }
   function panelHtml() {
     return '' +
@@ -68,12 +75,13 @@
       '<div class="dc-credit">帮我决定功能参考：@FelixFelicis（9416318007）</div>';
   }
   function bindEvents() {
+    const scope = '#chat-decision-body';
     // tab 切换
-    document.querySelectorAll('#tc-body .dc-tab').forEach(tb => {
+    document.querySelectorAll(scope + ' .dc-tab').forEach(tb => {
       tb.addEventListener('click', () => {
         activeTab = tb.dataset.dtab;
-        document.querySelectorAll('#tc-body .dc-tab').forEach(x => x.classList.toggle('sel', x === tb));
-        document.querySelectorAll('#tc-body .dc-panel').forEach(p => { p.hidden = p.dataset.dpanel !== activeTab; });
+        document.querySelectorAll(scope + ' .dc-tab').forEach(x => x.classList.toggle('sel', x === tb));
+        document.querySelectorAll(scope + ' .dc-panel').forEach(p => { p.hidden = p.dataset.dpanel !== activeTab; });
         if (activeTab === 'history') renderHistory();
       });
     });

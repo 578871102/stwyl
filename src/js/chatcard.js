@@ -59,14 +59,26 @@
     } catch (e) {}
     return JSON.parse(JSON.stringify(BUILTIN));
   }
-  // 初始化：从 IndexedDB 恢复字卡数据（若 localStorage 缺失）
+  // 初始化：从 IndexedDB 恢复字卡数据（权威持久库）
+  // localStorage 可能因配额写失败而停留在旧数据；只要 IDB 数据【内容更多】就用 IDB 覆盖，
+  // 避免新增的表情包分组/内容因 localStorage 配额问题"消失"。
+  // （不采用"不一致即覆盖"：若 idbSet 偶尔失败而 localStorage 已写入最新，覆盖会反向丢数据）
   (function () {
     if (window.idbGet) {
       window.idbGet(uid + ':cc-groups').then(v => {
-        if (!v) return;
+        if (v === undefined || v === null) return;
         try {
           const data = typeof v === 'string' ? JSON.parse(v) : v;
-          if (data && data.text && !store.get('cc-groups')) {
+          if (!data || !data.text) return;
+          const cardCount = (g) => {
+            let n = 0;
+            try { Object.keys(g).forEach(t => (g[t] || []).forEach(x => n += (Array.isArray(x[1]) ? x[1].length : 0))); } catch (e) {}
+            return n;
+          };
+          let localData = null;
+          try { localData = JSON.parse(store.get('cc-groups') || 'null'); } catch (e) {}
+          const localCount = localData && localData.text ? cardCount(localData) : -1;
+          if (localCount < 0 || cardCount(data) > localCount) {
             store.set('cc-groups', JSON.stringify(data));
             groups = data;
             renderGroupsBar();
@@ -78,9 +90,18 @@
   })();
   function saveGroups(groups) {
     const data = JSON.stringify(groups);
-    store.set('cc-groups', data);
-    // IndexedDB 权威持久（不丢任何字卡记录）
+    // v3.5.28：写入失败不再静默吞掉——超配额时移除失效键，
+    // 数据经 IndexedDB 兜底，下次启动自动恢复完整内容
+    let ok = true;
+    try {
+      localStorage.setItem(uid + ':cc-groups', data);
+    } catch (e) {
+      ok = false;
+      try { localStorage.removeItem(uid + ':cc-groups'); } catch (e2) {}
+    }
+    // IndexedDB 权威持久（不丢任何字卡记录；不占 localStorage 配额）
     if (window.idbSet) window.idbSet(uid + ':cc-groups', data);
+    return ok;
   }
 
   let groups = loadGroups();
@@ -454,7 +475,7 @@
   if (ccExport) {
     ccExport.addEventListener('click', () => {
       try {
-        const data = JSON.stringify(loadGroups(), null, 2);
+        const data = JSON.stringify(groups, null, 2);
         const blob = new Blob([data], { type: 'application/json' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
@@ -481,6 +502,49 @@
           try {
             const data = JSON.parse(String(reader.result || ''));
             if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('格式错误');
+            // v3.5.72：识别星言简约版聊天字卡库导出 json（globalCards + cardGroups 结构）
+            //   v3.5.73 修正：专享字卡的字卡内容+分组也正常导入，仅不导入其绑定的联系人
+            //   （Mochi 无专享联系人概念，天然忽略联系人；不跳过任何字卡）
+            if (Array.isArray(data.globalCards)) {
+              const starToMochiCat = { custom: 'text', kaomoji: 'kaomoji', emojis: 'emoji', stickers: 'sticker', image: 'image', touch: 'poke', voices: 'voice' };
+              const groupById = {};
+              (Array.isArray(data.cardGroups) ? data.cardGroups : []).forEach(g => { if (g && g.id) groupById[g.id] = g; });
+              const imgs = (data.images && typeof data.images === 'object') ? data.images : {};
+              const voices = (data.voices && typeof data.voices === 'object') ? data.voices : {};
+              let imported = 0;
+              const pending = []; // {cat, groupName, cardText}
+              data.globalCards.forEach(c => {
+                if (!c || typeof c !== 'object') return;
+                let content = c.content;
+                if (typeof content === 'string' && content.indexOf('__img__') === 0) {
+                  content = imgs[c.id] || '';
+                } else if (typeof content === 'string' && content.indexOf('__voice__') === 0) {
+                  content = voices[c.id] || '';
+                }
+                if (typeof content !== 'string' || !content) return;
+                // 分类映射（未知分类归入主字卡）
+                const cat = starToMochiCat[c.category] || 'text';
+                // 分组名：cardGroups 匹配 groupId；无则用「默认」
+                let gname = '默认';
+                if (c.groupId && groupById[c.groupId]) gname = groupById[c.groupId].name || '默认';
+                else if (c.groupName) gname = c.groupName;
+                pending.push({ cat: cat, groupName: gname, card: content });
+                imported++;
+              });
+              if (!imported) { toast('星言文件里没有可导入的字卡'); return; }
+              // 按分类+分组合并
+              pending.forEach(p => {
+                if (!groups[p.cat]) groups[p.cat] = [];
+                let g = groups[p.cat].find(x => x[0] === p.groupName);
+                if (!g) { g = [p.groupName, []]; groups[p.cat].push(g); }
+                g[1].push(p.card);
+              });
+              saveGroups(groups);
+              renderGroupsBar();
+              render();
+              toast('导入成功 · ' + imported + ' 张字卡（星言格式，字卡内容与分组完整导入）');
+              return;
+            }
             let imported = 0;
             ['text', 'kaomoji', 'emoji', 'sticker', 'image', 'poke', 'voice'].forEach(k => {
               const arr = data[k];
@@ -546,14 +610,15 @@
                 g[1].push(val);
                 done++;
                 if (done === files.length) {
-                  saveGroups(groups);
+                  const saved = saveGroups(groups);
                   renderGroupsBar();
                   render();
-                  toast('已上传 ' + done + ' 个' + (cur === 'voice' ? '音频' : '图片'));
+                  if (!saved) toast('存储空间不足：图片已用备用存储，刷新后恢复。请删除不用的表情包释放空间');
+                  else toast('已上传 ' + done + ' 个' + (cur === 'voice' ? '音频' : '图片'));
                 }
               };
               if (cur === 'voice') process(reader.result);
-              else compressImage(reader.result, 400).then(process);
+              else compressImage(reader.result, 260).then(process);
             };
             reader.readAsDataURL(f);
           });
@@ -639,35 +704,39 @@
 
   // ---- 回复池：给聊天页提供「自定义聊天字卡」里所有字卡 ----
   window.getCustomCards = function () {
-    const g = loadGroups();
+    const g = groups;
     const out = [];
     Object.keys(g).forEach(t => g[t].forEach(([name, arr]) => arr.forEach(c => out.push(c))));
     return out;
   };
   // 拍一拍字卡（自定义字卡里【拍一拍】分类）
   window.getPokeCards = function () {
-    const g = loadGroups();
+    const g = groups;
     const out = [];
     (g['poke'] || []).forEach(([name, arr]) => arr.forEach(c => out.push(c)));
     return out;
   };
   // 拍一拍分组（分组名 + 字卡数组），供拍一拍页面展示
   window.getPokeGroups = function () {
-    const g = loadGroups();
-    return (g['poke'] || []).slice();
+    return (groups['poke'] || []).slice();
   };
-  // 媒体字卡：表情包/图片 的图片 dataURL 列表（供回复/表情面板）
+  // 媒体字卡：表情包/图片 的图片 dataURL 列表、语音（文件名|||音频）列表（供回复/表情面板）
   window.getMediaCards = function (type) {
-    const g = loadGroups();
+    const g = groups;
     const out = [];
     (g[type] || []).forEach(([name, arr]) => arr.forEach(c => {
-      if (typeof c === 'string' && c.indexOf('data:image') === 0) out.push(c);
+      if (type === 'voice') {
+        // 语音字卡：文件名|||音频数据
+        if (typeof c === 'string' && c.indexOf('|||') > 0) out.push(c);
+      } else if (typeof c === 'string' && c.indexOf('data:image') === 0) {
+        out.push(c);
+      }
     }));
     return out;
   };
   // 媒体分组：表情包/图片 的分组结构（供表情面板展示）
   window.getMediaGroups = function (type) {
-    const g = loadGroups();
+    const g = groups;
     return (g[type] || []).map(([name, arr]) => [name, arr.filter(c => typeof c === 'string' && c.indexOf('data:image') === 0)]);
   };
 

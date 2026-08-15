@@ -78,9 +78,11 @@
     return sel.join('  ');
   }
 
-  // 生成或获取今日数据
+  // 生成或获取今日数据（本会话缓存，避免反复生成导致内容"变来变去"）
+  let calCache = null;
   function getToday() {
     const key = 'cal-' + todayStr();
+    if (calCache && calCache.date === todayStr()) return calCache;
     let entry = null;
     try { entry = JSON.parse(store.get(key) || 'null'); } catch (e) {}
     if (!entry) {
@@ -92,7 +94,10 @@
         date: todayStr()
       };
       store.set(key, JSON.stringify(entry));
+      // 手机端 localStorage 写入失败（空间满/隐私模式）时仍写入 IndexedDB 兜底
+      try { if (window.idbSet) window.idbSet(uid + ':' + key, JSON.stringify(entry)); } catch (e) {}
     }
+    calCache = entry;
     return entry;
   }
 
@@ -193,20 +198,41 @@
     });
   }
 
-  // 打开 mochi 即触发 TA 今日留言（每次会话首次，不依赖打开日历）
+  // 打开 mochi 即触发 TA 今日留言（每天一次）
+  // v3.5.25 修复"手机端一直触发"：localStorage 写失败（空间满/隐私模式）时旧逻辑每次都弹。
+  // 现在：本会话内存标记只弹一次 + 标记双写 IndexedDB（下次加载经 idbRestore 回填，不再重复弹）
   (function () {
     const key = 'greeted-' + todayStr();
-    if (store.get(key)) return;
-    store.set(key, '1');
-    setTimeout(() => {
-      const e2 = getToday();
-      const name = store.get('lbl-partner') || 'TA';
-      if (window.openModal) {
-        window.openModal(name + ' 的今日留言', '', () => {}, {
-          noInput: true,
-          staticText: '今日心情：' + e2.mood + '（' + e2.cat + '）\nTA 正在：' + e2.activity + '\n\nTA 留言：\n' + e2.message
-        });
+    let greeted = false; // 本会话只弹一次
+    function doGreet() {
+      greeted = true;
+      store.set(key, '1');
+      try { if (window.idbSet) window.idbSet(uid + ':' + key, '1'); } catch (e) {}
+      setTimeout(() => {
+        const e2 = getToday();
+        const name = store.get('lbl-partner') || 'TA';
+        if (window.openModal) {
+          window.openModal(name + ' 的今日留言', '', () => {}, {
+            noInput: true,
+            staticText: '今日心情：' + e2.mood + '（' + e2.cat + '）\nTA 正在：' + e2.activity + '\n\nTA 留言：\n' + e2.message
+          });
+        }
+      }, 800);
+    }
+    function maybeGreet() {
+      if (greeted) return;
+      if (store.get(key)) { greeted = true; return; }
+      // localStorage 无标记：查 IndexedDB（防止 localStorage 写失败/被清导致每天重复弹）
+      if (window.idbGet) {
+        window.idbGet(uid + ':' + key).then(v => {
+          if (v) { greeted = true; store.set(key, '1'); return; }
+          if (greeted) return;
+          doGreet();
+        }).catch(() => { if (!greeted) doGreet(); });
+      } else {
+        doGreet();
       }
-    }, 800);
+    }
+    maybeGreet();
   })();
 })();

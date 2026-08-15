@@ -3,7 +3,7 @@
 // 情绪卡：70% 基础概率 + emotionStreak 连续衰减（1→60% 2→45% 3→30% 4+→20%）
 //         按组权重选组 → 稀有度加权（normal80/rare15/special5）抽卡
 // 心意卡：40% 显示率 → 特殊心意(聊天≥20次+24h冷却+5%) → 情绪映射选组(加权+冷却) → 等级加权抽卡
-// 意图卡：20% 显示率 → 心意→意图映射加权 → 稀有度加权抽卡
+// 意图卡：40% 显示率 → 心意→意图映射加权 → 稀有度加权抽卡
 // 聊天回应：连接词 8 类，按回复特征选类
 (function () {
   const uid = 'xy-home-v2';
@@ -119,7 +119,7 @@
   // ---- 交流意图卡（星言 getRandomIntentCard）----
   window.getIntentCard = function (heartCard) {
     if (!enabled('intent')) return null;
-    if (Math.random() * 100 > 20) return null; // 20% 显示率
+    if (Math.random() * 100 > 40) return null; // 40% 显示率（与心意一致，避免"几乎不触发"）
     let pool = null;
     if (heartCard && heartCard.group && DATA.heartToIntent && DATA.heartToIntent[heartCard.group]) {
       pool = DATA.heartToIntent[heartCard.group];

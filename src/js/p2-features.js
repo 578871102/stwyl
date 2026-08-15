@@ -1,13 +1,36 @@
-// ===== 功能：聊天统计页 / 小互动页 =====
+// ===== 功能：聊天统计页 / 小互动页 / 今日备忘·心情 =====
 // 音乐：音乐库、播放列表、播放历史
 // 聊天统计：相处天数、消息数、表情包/拍一拍/情绪统计
 // 小互动：拍一拍 TA / 送一句情话
+// v3.5.27：今日备忘/今天的心情历史双写 IndexedDB——导入备份覆盖 localStorage 后记录可从 IDB 回填
 (function () {
   const uid = 'xy-home-v2';
   const store = {
     get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
     set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
   };
+  // 备忘/心情历史：localStorage + IndexedDB 双写；启动时从 IDB 回填缺失键（导入/清空后不丢记录）
+  function pushHist(key, text) {
+    try {
+      const list = JSON.parse(store.get(key) || '[]');
+      list.unshift({ text: text, ts: Date.now() });
+      if (list.length > 200) list.length = 200;
+      store.set(key, JSON.stringify(list));
+      try { if (window.idbSet) window.idbSet(uid + ':' + key, JSON.stringify(list)); } catch (e) {}
+    } catch (e) {}
+  }
+  function restoreHist(key) {
+    try {
+      if (window.idbGet && !store.get(key)) {
+        window.idbGet(uid + ':' + key).then(v => {
+          if (!v) return;
+          try { store.set(key, typeof v === 'string' ? v : JSON.stringify(v)); } catch (e) {}
+        });
+      }
+    } catch (e) {}
+  }
+  restoreHist('memo-history');
+  restoreHist('mood-history');
   function fmtTime(ts) {
     if (!ts) return '';
     const d = new Date(ts);
@@ -247,11 +270,15 @@ function renderCheckinHistory() {
   const histEl = document.getElementById('ck-history');
     if (!histEl) return;
     try {
-      const h = JSON.parse(store.get('checkin-history') || '[]');
-      histEl.innerHTML = h.length
-        ? h.slice().reverse().map(x =>
-            '<div class="ck-location"><div class="ck-value" style="font-size:13px">' + (x.t || '--') + ' · ' + (x.place || '--') + ' · ' + (x.action || '--') + '</div><div class="ck-label">' + (x.msg || '') + '</div></div>'
-          ).join('')
+      let h = [];
+      try { h = JSON.parse(store.get('checkin-history') || '[]'); } catch (e) { h = []; }
+      // 过滤无有效内容的记录（不渲染 "-- · -- · --" 占位），只显示实际存在的字段
+      const valid = (Array.isArray(h) ? h : []).filter(x => x && (x.place || x.action));
+      histEl.innerHTML = valid.length
+        ? valid.slice().reverse().map(x => {
+            const parts = [x.t, x.place, x.action].filter(Boolean);
+            return '<div class="ck-location"><div class="ck-value" style="font-size:13px">' + parts.join(' · ') + '</div><div class="ck-label">' + (x.msg || '') + '</div></div>';
+          }).join('')
         : '<div class="div-result-empty">暂无查岗记录</div>';
     } catch (e) {}
   }
@@ -485,14 +512,6 @@ function renderCheckinHistory() {
 
   // ================= 桌面第二页补充：今日备忘 / 今天的心情 / 本周日常 =================
   // 备忘/心情保存时写入历史（主页展示全部记录）
-  function pushHist(key, text) {
-    try {
-      const list = JSON.parse(store.get(key) || '[]');
-      list.unshift({ text: text, ts: Date.now() });
-      if (list.length > 200) list.length = 200;
-      store.set(key, JSON.stringify(list));
-    } catch (e) {}
-  }
   const memoEl = document.getElementById('memo-text');
   if (memoEl) {
     const saved = store.get('memo');
@@ -501,7 +520,10 @@ function renderCheckinHistory() {
       if (window.openModal) {
         window.openModal('今日备忘', memoEl.textContent === '点这里记一句话' ? '' : memoEl.textContent, (v) => {
           const val = (v || '').trim();
-          if (val) { memoEl.textContent = val; store.set('memo', val); pushHist('memo-history', val); }
+          if (val) {
+            memoEl.textContent = val; store.set('memo', val); pushHist('memo-history', val);
+            try { if (window.idbSet) window.idbSet(uid + ':memo', val); } catch (e) {}
+          }
         });
       }
     });
@@ -515,18 +537,27 @@ function renderCheckinHistory() {
         const moods = ['开心', '平静', '想你', '忙碌', '困', '充实', '温柔'];
         window.openModal('今天的心情', '', (v) => {
           const val = (v || '').trim();
-          if (val) { moodEl.textContent = val; store.set('today-mood', val); pushHist('mood-history', val); }
+          if (val) {
+            moodEl.textContent = val; store.set('today-mood', val); pushHist('mood-history', val);
+            try { if (window.idbSet) window.idbSet(uid + ':today-mood', val); } catch (e) {}
+          }
         }, { pills: moods.map(m => ({ label: m, value: m })), pill: store.get('today-mood') || '' });
       }
     });
   }
   const weekEl = document.getElementById('week-days');
   if (weekEl) {
+    // v3.5.37：统一布局——第一行周（日一二三四五六，今天显示「今」），第二行本周对应日期数字
     const names = ['日', '一', '二', '三', '四', '五', '六'];
     const now = new Date();
     const todayIdx = now.getDay();
-    weekEl.innerHTML = names.map((n, i) =>
-      '<div class="week-day' + (i === todayIdx ? ' today' : '') + '"><b>' + (i === todayIdx ? '今' : n) + '</b>' + (i === todayIdx ? now.getDate() : n) + '</div>'
-    ).join('');
+    // 本周起始 = 本周日（getDay() 0 即周日，周一~周六往前推）
+    const weekStart = new Date(now);
+    weekStart.setDate(now.getDate() - todayIdx);
+    weekEl.innerHTML = names.map((n, i) => {
+      const d = new Date(weekStart);
+      d.setDate(weekStart.getDate() + i);
+      return '<div class="week-day' + (i === todayIdx ? ' today' : '') + '"><b>' + (i === todayIdx ? '今' : n) + '</b>' + d.getDate() + '</div>';
+    }).join('');
   }
 })();

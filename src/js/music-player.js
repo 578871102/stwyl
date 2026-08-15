@@ -339,10 +339,13 @@
         const pl = playlists.find(p => p.id === pid);
         if (!pl) return;
         if (pl.id === 'spl_default') { toast('默认歌单不能删除'); return; }
-        if (!window.confirm('删除歌单「' + pl.name + '」？歌单里的歌曲不会删除')) return;
-        library.forEach(m => { if (m.playlistId === pid) m.playlistId = 'default'; });
-        playlists = playlists.filter(p => p.id !== pid);
-        saveLibrary(); savePlaylists(); renderPage();
+        if (window.openModal) {
+          window.openModal('删除歌单「' + pl.name + '」？歌单里的歌曲不会删除', '', () => {
+            library.forEach(m => { if (m.playlistId === pid) m.playlistId = 'default'; });
+            playlists = playlists.filter(p => p.id !== pid);
+            saveLibrary(); savePlaylists(); renderPage();
+          }, { noInput: true });
+        }
       });
     });
   }
@@ -729,7 +732,7 @@
     renderFavList();
     return i < 0;
   }
-  // 同步所有爱心（桌面部件 / 悬浮小框）
+  // 同步所有爱心（桌面部件 / 悬浮小框 / 音乐页底部播放栏）
   function syncHeartIcons() {
     const m = findTrack(currentId);
     const liked = m ? isFav(m.id) : false;
@@ -737,6 +740,8 @@
     if (hb) hb.classList.toggle('liked', liked);
     const fh = document.getElementById('sm-f-heart');
     if (fh) fh.classList.toggle('liked', liked);
+    const pb = document.getElementById('sm-pb-heart');
+    if (pb) pb.classList.toggle('liked', liked);
   }
   // 我的收藏列表
   function renderFavList() {
@@ -875,20 +880,23 @@
       toast('已保存');
     });
     document.getElementById('sm-e-del').addEventListener('click', () => {
-      if (!window.confirm('删除这首音乐？')) return;
-      library = library.filter(x => x.id !== id);
-      if (window.idbGetAllKeys) {
-        window.idbGetAllKeys().then(keys => {
-          keys.filter(k => k.indexOf(uid + ':music-file:' + id) === 0).forEach(k => {
-            if (window.idbDelete) window.idbDelete(k);
-          });
-        });
+      if (window.openModal) {
+        window.openModal('删除这首音乐？', '', () => {
+          library = library.filter(x => x.id !== id);
+          if (window.idbGetAllKeys) {
+            window.idbGetAllKeys().then(keys => {
+              keys.filter(k => k.indexOf(uid + ':music-file:' + id) === 0).forEach(k => {
+                if (window.idbDelete) window.idbDelete(k);
+              });
+            });
+          }
+          if (currentId === id) { teardownAudio(); currentId = null; }
+          saveLibrary();
+          document.getElementById('tc-mask').hidden = true;
+          renderPage();
+          toast('已删除');
+        }, { noInput: true });
       }
-      if (currentId === id) { teardownAudio(); currentId = null; }
-      saveLibrary();
-      document.getElementById('tc-mask').hidden = true;
-      renderPage();
-      toast('已删除');
     });
   }
 
@@ -1048,6 +1056,17 @@
         const liked = toggleFav(m.id);
         toast(liked ? '已收藏' : '已取消收藏');
       });
+    }
+    // 音乐页底部播放栏收藏按钮（v3.5.64）
+    const pbHeart = document.getElementById('sm-pb-heart');
+    if (pbHeart) {
+      pbHeart.addEventListener('click', () => {
+        const m = findTrack(currentId);
+        if (!m) { toast('请先播放一首歌'); return; }
+        const liked = toggleFav(m.id);
+        toast(liked ? '已收藏' : '已取消收藏');
+      });
+      syncHeartIcons();
     }
     // 桌面进度条
     if (bar) {

@@ -121,10 +121,11 @@
 }
 .cc-groups-bar::-webkit-scrollbar { display:none; }
 .cc-g-chip {
-  flex:0 0 auto; padding:7px 14px; font-size:12px; border-radius:99px;
+  flex:0 0 auto; padding:10px 16px; font-size:12px; border-radius:99px;
   border:1px solid rgba(0,0,0,.1); background:rgba(255,255,255,.92);
   color:#666; cursor:pointer; font-family:inherit; font-weight:600;
-  -webkit-tap-highlight-color:transparent;
+  -webkit-tap-highlight-color:transparent; display:inline-flex; align-items:center;
+  min-height:38px;
 }
 .cc-g-chip.sel { background:#111; color:#fff; border-color:#111; }
 
@@ -301,25 +302,75 @@
 .mem-extra .me-name { flex:1; font-size:14px; font-weight:600; }
 .mem-extra .me-date { font-size:12px; color:var(--muted); }
 .mem-extra .me-days { font-size:12px; color:var(--ink); font-weight:600; margin-left:8px; }
+/* 倒数日（还有 X 天）强调 */
+.mem-extra .me-days.count { color:#e05555; }
 .mem-extra .me-del {
-  width:26px; height:26px; border-radius:50%; border:none; cursor:pointer;
-  background:rgba(0,0,0,.06); color:#999; font-size:13px;
+  width:32px; height:32px; border-radius:50%; border:none; cursor:pointer;
+  background:rgba(0,0,0,.06); color:#999; font-size:14px;
   display:flex; align-items:center; justify-content:center; flex-shrink:0;
 }
 .mem-extra .me-del:active { background:rgba(224,85,85,.15); color:#e05555; }
 .mem-add {
-  width:100%; margin-top:10px; padding:12px; border:none; border-radius:14px;
+  width:100%; margin-top:10px; padding:14px; border:none; border-radius:14px;
   background:rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.12);
-  color:var(--ink); font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;
+  color:var(--ink); font-size:14px; font-weight:600; cursor:pointer; font-family:inherit;
+  min-height:44px;
 }
 .mem-add:active { background:rgba(255,255,255,.6); }
+
+/* 添加纪念日 / 倒数日：日历选择弹层（v3.5.29） */
+.mem-add-panel { width:min(300px, 86vw); }
+.mem-add-input {
+  width:100%; box-sizing:border-box; padding:11px 14px; border-radius:12px;
+  border:1px solid rgba(0,0,0,.12); background:rgba(255,255,255,.92);
+  font-size:14px; color:var(--ink); font-family:inherit; outline:none; margin-bottom:12px;
+}
+.mem-add-input:focus { border-color:var(--ink); }
+.mem-cal {
+  background:rgba(0,0,0,.03); border-radius:14px; padding:10px 8px 8px; margin-bottom:10px;
+}
+.mem-cal-nav { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+.mem-cal-title { font-size:14px; font-weight:700; }
+.mem-cal-btn {
+  width:32px; height:32px; border-radius:50%; border:none; cursor:pointer;
+  background:rgba(0,0,0,.05); color:#555;
+  display:flex; align-items:center; justify-content:center; font-family:inherit;
+  -webkit-tap-highlight-color:transparent;
+}
+.mem-cal-btn:active { background:var(--ink); color:#fff; }
+.mem-cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
+.mem-cal-wd { font-size:10px; color:var(--muted); text-align:center; padding:3px 0; }
+.mem-cal-cell {
+  aspect-ratio:1; border-radius:9px; display:flex; align-items:center; justify-content:center;
+  font-size:12px; color:#777; cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.mem-cal-cell:hover { background:rgba(0,0,0,.06); }
+.mem-cal-cell.blank { cursor:default; }
+.mem-cal-cell.today { box-shadow:inset 0 0 0 1px var(--ink); color:var(--ink); font-weight:700; }
+.mem-cal-cell.sel { background:var(--ink); color:#fff; font-weight:700; }
+.mem-type-row { display:flex; gap:8px; margin-bottom:8px; }
+.mem-type-pill {
+  flex:1; padding:9px 0; border:1px solid rgba(0,0,0,.12); border-radius:99px;
+  background:rgba(255,255,255,.92); color:#666; font-size:12px; font-weight:600;
+  cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.mem-type-pill.sel { background:var(--ink); color:#fff; border-color:var(--ink); }
+.mem-type-hint { font-size:11px; color:var(--muted); margin-bottom:12px; text-align:center; }
+.mem-add-foot { display:flex; gap:10px; }
+.mem-add-cancel, .mem-add-ok {
+  flex:1; padding:12px; border-radius:14px; font-size:14px; font-weight:700;
+  cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.mem-add-cancel { border:1px solid rgba(0,0,0,.12); background:rgba(255,255,255,.92); color:#666; }
+.mem-add-ok { border:none; background:var(--ink); color:#fff; }
 
 /* 收藏页分类 tab */
 .fav-tabs {
   display:flex; gap:8px; padding:4px 18px 12px; flex-shrink:0;
 }
 .fav-tab {
-  flex:1; padding:10px; font-size:13px; font-weight:600;
+  flex:1; padding:12px 10px; font-size:13px; font-weight:600;
   border:1px solid rgba(0,0,0,.1); background:rgba(255,255,255,.92);
   color:#666; border-radius:12px; cursor:pointer; font-family:inherit;
   -webkit-tap-highlight-color:transparent;
@@ -391,8 +442,8 @@
 .cal-mine { font-style:normal; }
 .cal-edit-btn {
   display:inline-flex; align-items:center; gap:6px; margin-top:10px;
-  padding:8px 14px; border:1px solid rgba(0,0,0,.1); border-radius:12px;
-  background:rgba(255,255,255,.92); color:var(--ink); font-size:12px; font-weight:600;
+  padding:10px 16px; border:1px solid rgba(0,0,0,.1); border-radius:12px;
+  background:rgba(255,255,255,.92); color:var(--ink); font-size:13px; font-weight:600;
   cursor:pointer; font-family:inherit;
 }
 .cal-edit-btn:active { background:rgba(255,255,255,.6); }
@@ -433,17 +484,20 @@
 }
 .div-result { min-height:120px; display:flex; flex-direction:column; gap:10px; }
 .div-result-empty { color:#c0c0c0; font-size:12px; text-align:center; padding:30px 0; }
+/* 牌面：灰底正方形框（图标 + 牌名在框内，寓意在框外下方） */
 .div-card-face {
-  border-radius:14px; padding:16px; text-align:center;
-  background:rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.1);
+  width:100%; aspect-ratio:1; border-radius:14px;
+  background:#eceff3; border:1px solid rgba(0,0,0,.05);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
 }
-.div-card-name { font-size:17px; font-weight:800; color:var(--ink); margin-top:6px; }
-.div-card-meaning { font-size:13px; color:var(--muted); margin-top:6px; line-height:1.6; }
+.div-card-name { font-size:13px; font-weight:800; color:var(--ink); }
+.div-card-meaning { font-size:11px; color:var(--muted); line-height:1.55; text-align:center; }
 .div-card-ico {
-  width:48px; height:48px; border-radius:14px; margin:0 auto;
+  width:40px; height:40px; border-radius:12px;
   background:rgba(0,0,0,.06); display:flex; align-items:center; justify-content:center;
+  color:var(--ink);
 }
-.div-card-ico svg { width:26px; height:26px; }
+.div-card-ico svg { width:24px; height:24px; }
 .div-draw {
   width:100%; display:flex; align-items:center; justify-content:center; gap:8px;
   padding:14px; border:none; border-radius:16px;
@@ -453,15 +507,20 @@
 .div-draw:active { opacity:.85; }
 .div-draw svg { width:18px; height:18px; }
 
-/* 三张牌阵 */
-.div-spread { display:flex; gap:8px; }
-.div-mini { flex:1; padding:12px 8px; }
-.div-mini .div-card-ico { width:38px; height:38px; }
-.div-mini .div-card-name { font-size:14px; }
+/* 牌面排列：1 张居中大牌、3 张一行（窄屏自动换行为两行） */
+.div-spread { display:flex; flex-wrap:wrap; gap:10px; }
+.div-mini {
+  flex:1 1 30%; min-width:88px; max-width:33.33%;
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  animation: divIn .45s ease both;
+}
+.div-mini-single { flex:0 0 58%; max-width:58%; margin:0 auto; }
+.div-mini .div-card-ico { width:34px; height:34px; }
+.div-mini .div-card-name { font-size:12px; }
 .div-mini .div-card-meaning { font-size:11px; }
 .div-mini-tag {
   display:inline-block; font-size:10px; font-weight:600;
-  padding:2px 8px; border-radius:99px; margin-bottom:8px;
+  padding:2px 8px; border-radius:99px;
   background:rgba(0,0,0,.07); color:var(--ink);
 }
 .div-summary {
@@ -470,11 +529,38 @@
   background:rgba(255,255,255,.92); border-radius:12px;
   border:1px solid rgba(0,0,0,.1);
 }
-
-/* 7 张牌阵：自动换行 */
-.div-spread.spread7 { flex-wrap:wrap; }
-.div-spread.spread7 .div-mini { flex:0 0 30%; }
 .div-desc { font-size:11px; color:var(--muted); margin-top:10px; line-height:1.6; }
+
+/* 完整版占卜：翻牌动画 / 问题 / 发送按钮 / 历史记录 */
+@keyframes divIn {
+  from { opacity:0; transform:translateY(12px) scale(.95); }
+  to { opacity:1; transform:none; }
+}
+.div-question-q { font-size:12px; color:var(--muted); text-align:center; margin-top:8px; line-height:1.6; }
+.div-send-btn {
+  margin-top:10px; width:100%; border:none; border-radius:12px; padding:12px 0;
+  background:var(--ink); color:#fff; font-size:13px; font-weight:700; cursor:pointer;
+  font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.div-send-btn:active { opacity:.85; }
+.div-h-item {
+  display:flex; align-items:center; gap:8px; padding:9px 2px;
+  border-bottom:1px solid rgba(0,0,0,.06);
+}
+.div-h-item:last-child { border-bottom:none; }
+.div-h-main { flex:1; min-width:0; }
+.div-h-title { font-size:12px; font-weight:700; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.div-h-sub { font-size:10px; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.div-h-view {
+  flex-shrink:0; border:none; border-radius:99px; padding:5px 12px; font-size:11px;
+  background:rgba(0,0,0,.06); color:var(--ink); cursor:pointer; font-family:inherit;
+}
+.div-h-view:active { opacity:.7; }
+.div-h-del {
+  flex-shrink:0; width:22px; height:22px; border:none; border-radius:50%;
+  background:transparent; color:#bbb; font-size:11px; cursor:pointer; padding:0;
+}
+.div-h-del:active { color:#e05555; }
 
 /* 帮我决定弹层内容 */
 .decide-options {
@@ -619,6 +705,16 @@
 
 /* 管理页：分类卡 */
 .ta-empty { text-align:center; color:#c0c0c0; font-size:12px; padding:10px 0; }
+/* 主页每日摸鱼值：顶部累计 */
+.fish-total {
+  display:flex; gap:8px; margin-bottom:12px;
+}
+.fish-total .ft-item {
+  flex:1; text-align:center; padding:10px 6px; font-size:12px; color:var(--muted);
+  background:rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.1);
+  border-radius:12px;
+}
+.fish-total .ft-item b { display:block; font-size:17px; color:var(--ink); margin-bottom:2px; }
 .ta-row {
   display:flex; align-items:center; gap:10px;
   padding:8px 4px; border-bottom:1px solid rgba(0,0,0,.08);
@@ -705,6 +801,7 @@
 .tc-input {
   border:1px solid rgba(0,0,0,.1); border-radius:10px; padding:9px 12px;
   font-size:13px; font-family:inherit; outline:none; background:#fff; color:var(--ink);
+  width:100%; box-sizing:border-box;
 }
 .tc-range { flex:1; accent-color:var(--ink); }
 .tc-prob-val { font-size:12px; color:var(--ink); width:38px; text-align:right; font-weight:600; }
@@ -848,6 +945,7 @@
   padding:10px 14px 0;
 }
 .mail-paper-body { padding:8px 14px 14px; font-size:13px; color:#333; line-height:24px; word-break:break-word; white-space:pre-wrap; }
+.mail-body-img { max-width:180px; max-height:180px; border-radius:8px; display:block; margin:4px 0; }
 .mail-actions { display:flex; gap:8px; margin-top:6px; }
 .mail-reply-form { margin-bottom:8px; }
 .mail-reply-hint { font-size:12px; color:var(--muted); text-align:center; margin-bottom:10px; }
@@ -872,9 +970,11 @@
 }
 .feed-img { margin-top:8px; }
 .feed-img img { max-width:220px; max-height:220px; border-radius:10px; display:block; cursor:zoom-in; }
+.feed-head-av { flex-shrink:0; cursor:pointer; border-radius:12px; }
+.feed-head-av:active { opacity:.75; }
 .feed-head { display:flex; align-items:center; gap:10px; }
 .feed-av {
-  width:40px; height:40px; border-radius:50%; flex-shrink:0;
+  width:40px; height:40px; border-radius:6px; flex-shrink:0;
   background:#e9e9e9; overflow:hidden;
   display:flex; align-items:center; justify-content:center;
 }
@@ -892,9 +992,17 @@
 }
 .feed-act.liked { color:#e05555; }
 .feed-likes { font-size:11px; color:var(--muted); background:rgba(0,0,0,.03); border-radius:8px; padding:6px 10px; margin-top:8px; }
-.feed-comments { border-top:1px solid rgba(0,0,0,.05); margin-top:8px; padding-top:8px; }
-.feed-comment { font-size:12px; color:#555; line-height:1.7; }
-.feed-comment b { color:var(--ink); font-weight:600; }
+/* 评论区（v3.5.55 星言式：灰底区块、昵称高亮、回复嵌套缩进对称对齐） */
+.feed-comments {
+  margin-top:8px; padding:8px 10px;
+  background:rgba(0,0,0,.045); border-radius:10px;
+}
+.feed-comment { font-size:12px; color:#555; line-height:1.8; }
+.feed-comment b { color:var(--ink); font-weight:700; }
+/* 回复：缩进在对应评论下方，对称对齐 */
+.feed-replies { padding-left:22px; margin-top:2px; }
+.feed-reply { font-size:12px; color:#666; line-height:1.8; }
+.feed-reply b { color:var(--ink); font-weight:600; }
 
 /* ===== 使用许可说明 ===== */
 .lic-block { margin-bottom:14px; }
@@ -1025,6 +1133,8 @@
 .sm-pb-artist { font-size:11px; color:var(--muted); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .sm-pb-progress { font-size:10px; color:var(--muted); margin-top:2px; display:flex; justify-content:space-between; }
 .sm-pb-ctrl { display:flex; align-items:center; gap:4px; flex-shrink:0; }
+.sm-pb-btn.liked { color:#e05555; }
+.sm-pb-btn.liked svg { fill:#e05555; stroke:#e05555; }
 .sm-pb-btn {
   width:32px; height:32px; border:none; border-radius:50%; background:rgba(0,0,0,.05);
   display:flex; align-items:center; justify-content:center; color:#111; cursor:pointer; padding:0;
@@ -1108,22 +1218,25 @@
 
 /* ===== 朋友圈 ===== */
 .feed-cover {
-  position:relative; height:110px; border-radius:16px; margin-bottom:12px; flex-shrink:0;
+  position:relative; height:230px; border-radius:18px; margin-bottom:14px; flex-shrink:0;
   background:linear-gradient(135deg, #3a3a3a 0%, #1a1a1a 100%);
-  display:flex; align-items:flex-end; justify-content:flex-end; gap:10px;
-  padding:12px 14px; overflow:hidden;
+  display:flex; align-items:flex-end; justify-content:flex-end; gap:12px;
+  padding:16px 18px; overflow:hidden;
 }
+/* v3.5.61 封面调大后：背景图铺满 */
+.feed-cover.has-bg { background-size:cover; background-position:center; }
 .feed-cover::after {
   content:''; position:absolute; top:-30px; right:-20px; width:120px; height:120px;
   border:1px solid rgba(255,255,255,.15); border-radius:50%;
 }
+.feed-cover.has-bg { background-size:cover; background-position:center; }
 .feed-cover-av {
-  width:44px; height:44px; border-radius:10px; overflow:hidden; flex-shrink:0;
-  background:rgba(255,255,255,.15); border:2px solid rgba(255,255,255,.7);
+  width:58px; height:58px; border-radius:12px; overflow:hidden; flex-shrink:0;
+  background:rgba(255,255,255,.15); border:2px solid rgba(255,255,255,.8);
   display:flex; align-items:center; justify-content:center;
 }
 .feed-cover-av img { width:100%; height:100%; object-fit:cover; display:block; }
-.feed-cover-name { font-size:13px; font-weight:700; color:#fff; letter-spacing:1px; }
+.feed-cover-name { font-size:16px; font-weight:700; color:#fff; letter-spacing:1px; text-shadow:0 1px 3px rgba(0,0,0,.4); }
 .feed-post {
   background:rgba(255,255,255,.92); border:1px solid rgba(0,0,0,.1);
   border-radius:14px; padding:14px; margin-bottom:12px;
@@ -1132,7 +1245,7 @@
 .feed-img img { max-width:220px; max-height:220px; border-radius:10px; display:block; cursor:zoom-in; }
 .feed-head { display:flex; align-items:center; gap:10px; }
 .feed-av {
-  width:40px; height:40px; border-radius:50%; flex-shrink:0;
+  width:40px; height:40px; border-radius:6px; flex-shrink:0;
   background:#e9e9e9; overflow:hidden;
   display:flex; align-items:center; justify-content:center;
 }
@@ -1158,3 +1271,122 @@
 .feed-comment b { color:var(--ink); font-weight:600; }
 .feed-reply { font-size:12px; color:#666; line-height:1.7; padding:2px 0 2px 12px; }
 .feed-reply b { color:var(--ink); font-weight:600; }
+/* 朋友圈页面内评论条（点【评论】出现，微信式） */
+#page-feed { position:relative; }
+/* 评论表情/图片面板容器：absolute 定位在评论条上方，紧贴输入栏 */
+.feed-comment-panel { position:absolute; left:14px; right:14px; bottom:56px; z-index:80; }
+.feed-comment-panel[hidden] { display:none; }
+.feed-comment-bar {
+  flex-shrink:0; display:flex; flex-direction:column; gap:6px;
+  padding:10px 14px; border-top:1px solid rgba(0,0,0,.06);
+  background:rgba(255,255,255,.97);
+}
+.feed-comment-bar[hidden] { display:none; }
+.feed-comment-row { display:flex; align-items:center; gap:8px; width:100%; }
+/* 评论图片/表情预览（缩略图 + 删除） */
+.feed-comment-pv { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.feed-comment-pv[hidden] { display:none; }
+.feed-pv-sm img { width:42px; height:42px; }
+.feed-comment-ico {
+  width:34px; height:34px; flex-shrink:0; border-radius:50%;
+  border:1px solid rgba(0,0,0,.1); background:#fff; color:#666; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  -webkit-tap-highlight-color:transparent;
+}
+.feed-comment-ico:active { background:rgba(0,0,0,.05); }
+.feed-comment-ico svg { width:18px; height:18px; }
+/* 评论图片（v3.5.56） */
+.feed-c-img {
+  display:block; max-width:120px; max-height:120px; border-radius:8px;
+  margin-top:4px; object-fit:cover;
+}
+.feed-reply .feed-c-img { max-width:80px; max-height:80px; }
+.feed-comment-input {
+  flex:1; min-width:0; border:1px solid rgba(0,0,0,.1); border-radius:99px;
+  padding:9px 14px; font-size:13px; font-family:inherit; outline:none; background:#f6f6f6;
+}
+.feed-comment-input:focus { border-color:var(--ink); background:#fff; }
+.feed-comment-send {
+  flex-shrink:0; border:none; border-radius:99px; padding:0 18px;
+  background:var(--ink); color:#fff; font-size:13px; font-weight:700;
+  cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+/* 朋友圈顶部栏：通知提醒（带未读角标）/ 发布 按钮 */
+.feed-head-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.feed-head-btn { position:relative; color:#111; }
+.feed-badge {
+  position:absolute; top:-3px; right:-3px; min-width:16px; height:16px;
+  padding:0 4px; border-radius:99px; background:#e05555; color:#fff;
+  font-size:10px; font-weight:700; line-height:16px; text-align:center;
+  box-sizing:border-box;
+}
+.feed-badge[hidden] { display:none; }
+/* 通知提醒面板（页面内覆盖层，顶部栏下方） */
+.feed-notice-panel {
+  position:absolute; left:12px; right:12px; top:58px; z-index:80;
+  background:rgba(255,255,255,.98); border:1px solid rgba(0,0,0,.1);
+  border-radius:16px; box-shadow:0 12px 32px rgba(0,0,0,.14);
+  padding:12px 14px; max-height:60%; display:flex; flex-direction:column;
+}
+.feed-notice-panel[hidden] { display:none; }
+.feed-notice-head {
+  display:flex; align-items:center; justify-content:space-between;
+  font-size:14px; font-weight:700; margin-bottom:8px; flex-shrink:0;
+}
+.feed-notice-list {
+  flex:1; overflow-y:auto; scrollbar-width:none; -ms-overflow-style:none;
+}
+.feed-notice-list::-webkit-scrollbar { display:none; }
+.fn-av {
+  width:34px; height:34px; flex-shrink:0; border-radius:6px; overflow:hidden;
+  background:#e9e9e9; display:flex; align-items:center; justify-content:center;
+}
+.fn-av img { width:100%; height:100%; object-fit:cover; display:block; }
+.fn-av svg { width:18px; height:18px; }
+.feed-notice-item {
+  display:flex; align-items:center; gap:8px; padding:9px 6px;
+  border-radius:10px; cursor:pointer; font-size:12px; color:#444;
+}
+.feed-notice-item:active { background:rgba(0,0,0,.05); }
+.feed-notice-item .fn-ico {
+  flex-shrink:0; display:flex; align-items:center; justify-content:center;
+  color:#999;
+}
+.feed-notice-item .fn-text { flex:1; min-width:0; line-height:1.5; }
+.feed-notice-item .fn-time { font-size:10px; color:var(--muted); flex-shrink:0; }
+.feed-notice-item.new .fn-ico { color:#e05555; }
+/* 发布框：添加图片 */
+.feed-pick-row { display:flex; align-items:center; gap:10px; margin-top:8px; }
+.feed-pick-img {
+  flex-shrink:0; display:flex; align-items:center;
+  border:1px solid rgba(0,0,0,.1); background:#fff; color:var(--ink);
+  font-size:12px; font-weight:600; padding:6px 12px; border-radius:99px;
+  cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+}
+.feed-pick-img:active { background:rgba(0,0,0,.05); }
+.feed-preview { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:8px; }
+.feed-preview[hidden] { display:none; }
+.feed-pv { position:relative; }
+.feed-pv img { width:56px; height:56px; border-radius:10px; object-fit:cover; display:block; }
+.feed-preview-del {
+  position:absolute; top:-6px; right:-6px; width:18px; height:18px;
+  border-radius:50%; border:none; background:rgba(0,0,0,.55); color:#fff;
+  font-size:10px; line-height:18px; cursor:pointer; padding:0;
+  display:flex; align-items:center; justify-content:center;
+}
+/* 正文/评论图文混排：dataURL 图片内联显示 */
+/* v3.5.71 朋友圈评论/回复里的表情包+图片：合理缩略图（表情包不再被放大成 180px 巨图） */
+.feed-inline-img {
+  display:inline-block; max-width:100px; max-height:100px; border-radius:8px;
+  vertical-align:middle; margin:2px 2px;
+}
+.feed-reply .feed-inline-img { max-width:60px; max-height:60px; }
+/* 提醒跳转：目标动态高亮闪烁 */
+.feed-flash {
+  animation: feedFlash 1.6s ease 2;
+  border-radius:12px;
+}
+@keyframes feedFlash {
+  0%, 100% { background:transparent; }
+  50% { background:rgba(255,229,143,.55); }
+}

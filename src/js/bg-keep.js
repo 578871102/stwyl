@@ -149,14 +149,23 @@
   })();
 
   // 供 chat.js 调用：收到 TA 新消息且页面不在前台时弹浏览器通知
-  window.bgNotifyCheck = function (text) {
+  // 通知显示：联系人头像 + 昵称 + 消息发送时间 + 内容
+  window.bgNotifyCheck = function (text, ts) {
     if (!notifyEnabled) return;
     if (document.visibilityState === 'visible') return;
     if (!('Notification' in window) || Notification.permission !== 'granted') return;
     try {
       const name = store.get('lbl-partner') || 'TA';
+      let t = '';
+      if (ts) {
+        const d = new Date(ts);
+        t = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+      }
       const body = text && text.length > 40 ? text.slice(0, 40) + '…' : (text || '收到一条新消息');
-      const n = new Notification(name, { body: body });
+      const opts = { body: (t ? t + '  ' : '') + body };
+      const avatar = store.get('avatar-partner') || '';
+      if (avatar) opts.icon = avatar;
+      const n = new Notification(name, opts);
       setTimeout(function () { try { n.close(); } catch (e) {} }, 6000);
     } catch (e) {}
   };

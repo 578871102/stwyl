@@ -8,7 +8,7 @@
 }
 .tabbar .tab {
   display:flex; align-items:center; justify-content:center; flex:1;
-  color:var(--muted); cursor:pointer; padding:10px 6px; border-radius:14px;
+  color:var(--muted); cursor:pointer; padding:12px 6px; border-radius:14px;
   transition:color .18s ease, background .18s ease;
 }
 .tabbar .tab.active { color:var(--ink); background:rgba(0,0,0,.05); }

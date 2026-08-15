@@ -60,11 +60,20 @@
     t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 2000);
   }
 
+  // v3.5.34：自动弹窗概率（0-100）。兼容旧布尔 autoPopup：true→70，false→0
+  function askPopupProb(s) {
+    if (s && typeof s.popupProb === 'number') return s.popupProb;
+    if (s && s.autoPopup === false) return 0;
+    return 70;
+  }
+
   // ---- 数据读写 ----
   function taAskLoad() {
     let d = null;
     try { d = JSON.parse(store.get(KEY) || 'null'); } catch (e) { d = null; }
     if (!d || typeof d !== 'object' || Array.isArray(d)) d = {};
+    // v3.5.33：设置（启用/概率/自动弹窗）
+    if (!d.settings || typeof d.settings !== 'object') d.settings = { enabled: true, prob: 20, popupProb: 70 };
     if (!Array.isArray(d.questions) || !d.questions.length) {
       d.questions = DEFAULT_QUESTIONS.map(q => Object.assign({}, q));
     } else {
@@ -87,25 +96,30 @@
     return qs[Math.floor(Math.random() * qs.length)].text;
   }
 
-  // 发出一条询问（系统提示 + 询问卡片，并自动弹出回答窗）
-  function pushAsk(q) {
+  // 发出一条询问（系统提示 + 询问卡片；弹窗按 popupProb 概率触发）
+  function pushAsk(q, opts) {
     if (!window.chatAddSystem) return;
+    let popup = true;
+    if (opts && typeof opts.popupProb === 'number') popup = Math.random() * 100 < opts.popupProb;
+    else if (opts && opts.popup === false) popup = false;
     window.chatAddSystem('TA想问你一个问题。');
     const el = window.chatAddSystem(q, { special: 'ask-card', askQuestion: q });
     const idx = el ? Number(el.dataset.idx) : -1;
-    setTimeout(() => { if (idx >= 0 && window.openAskReply) window.openAskReply(idx); }, 400);
+    if (popup) setTimeout(() => { if (idx >= 0 && window.openAskReply) window.openAskReply(idx); }, 400);
   }
-  // ---- 触发调度（与星言一致：冷却 25 分钟、概率 20%，启动 60 秒后首次、每 4 分钟轮询） ----
+  // ---- 触发调度（v3.5.34：启用开关 + 触发概率滑块 + 自动弹窗概率滑块） ----
   function maybeTriggerTAAsk() {
     try {
       const d = taAskLoad();
+      const s = d.settings || { enabled: true, prob: 20, popupProb: 70 };
+      if (s.enabled === false) return;
       if (Date.now() - (d.lastAskAt || 0) < 25 * 60000) return;
-      if (Math.random() > 0.2) return;
+      if (Math.random() * 100 >= (typeof s.prob === 'number' ? s.prob : 20)) return;
       const q = taAskPick(d);
       if (!q) return;
       d.lastAskAt = Date.now();
       taAskSave(d);
-      pushAsk(q);
+      pushAsk(q, { popupProb: askPopupProb(s) });
     } catch (e) {}
   }
   setTimeout(maybeTriggerTAAsk, 60000);
@@ -137,18 +151,61 @@
   // ---- 管理页 ----
   const page = document.getElementById('page-ta-ask');
   if (!page) return;
-  // 触发一次询问（供管理页按钮 / 更多功能面板共用）
+  // 触发一次询问（供管理页按钮 / 更多功能面板共用；遵循"自动弹窗概率"）
   window.triggerTaAskNow = function () {
     const d = taAskLoad();
     const q = taAskPick(d);
     if (!q) { toast('题库没有启用的问题'); return; }
+    const s = d.settings || { enabled: true, prob: 20, popupProb: 70 };
     d.lastAskAt = Date.now();
     taAskSave(d);
-    pushAsk(q);
+    pushAsk(q, { popupProb: askPopupProb(s) });
     toast('TA 在聊天里向你提问了');
   };
   const nowBtn = document.getElementById('ta-ask-now');
   if (nowBtn) nowBtn.addEventListener('click', () => window.triggerTaAskNow());
+  // v3.5.34：TA 询问设置——启用 / 触发概率 / 自动弹窗概率
+  function renderAskSettings() {
+    const d = taAskLoad();
+    const s = d.settings || { enabled: true, prob: 20, popupProb: 70 };
+    const enEl = document.getElementById('ta-ask-enable');
+    if (enEl) enEl.checked = s.enabled !== false;
+    const probEl = document.getElementById('ta-ask-prob');
+    const probVal = document.getElementById('ta-ask-prob-val');
+    if (probEl) probEl.value = typeof s.prob === 'number' ? s.prob : 20;
+    if (probVal) probVal.textContent = (typeof s.prob === 'number' ? s.prob : 20) + '%';
+    const popEl = document.getElementById('ta-ask-popup');
+    const popVal = document.getElementById('ta-ask-popup-val');
+    const pp = askPopupProb(s);
+    if (popEl) popEl.value = pp;
+    if (popVal) popVal.textContent = pp + '%';
+  }
+  const askEn = document.getElementById('ta-ask-enable');
+  if (askEn) askEn.addEventListener('change', () => {
+    const d = taAskLoad();
+    d.settings.enabled = askEn.checked;
+    taAskSave(d);
+    toast(askEn.checked ? 'TA的询问已开启' : 'TA的询问已关闭');
+  });
+  const askProb = document.getElementById('ta-ask-prob');
+  if (askProb) askProb.addEventListener('input', () => {
+    const d = taAskLoad();
+    d.settings.prob = parseInt(askProb.value, 10) || 20;
+    taAskSave(d);
+    const v = document.getElementById('ta-ask-prob-val');
+    if (v) v.textContent = askProb.value + '%';
+    toast('触发概率已设为 ' + askProb.value + '%');
+  });
+  const askPopup = document.getElementById('ta-ask-popup');
+  if (askPopup) askPopup.addEventListener('input', () => {
+    const d = taAskLoad();
+    d.settings.popupProb = parseInt(askPopup.value, 10) || 0;
+    taAskSave(d);
+    const v = document.getElementById('ta-ask-popup-val');
+    if (v) v.textContent = askPopup.value + '%';
+    toast('弹窗概率已设为 ' + askPopup.value + '%');
+  });
+  renderAskSettings();
   const backBtn = document.getElementById('ta-ask-back');
   if (backBtn) {
     backBtn.addEventListener('click', () => {
@@ -355,31 +412,36 @@
     const src = pool.length ? pool : fallback;
     return src[Math.floor(Math.random() * src.length)];
   }
-  // 发卡：系统提示 + 写入聊天（选择题卡片），延迟弹层
-  function tcPush(q) {
+  // 发卡：系统提示 + 写入聊天（选择题卡片），弹窗按 popupProb 概率触发
+  function tcPush(q, opts) {
     if (!window.chatAddSystem) return;
     _tcSessionTriggered = true;
     if (q.id && _tcAskedIds.indexOf(q.id) === -1) _tcAskedIds.push(q.id);
     const d = tcLoad();
     d.lastChoiceAt = Date.now();
     tcSave(d);
+    let popup = true;
+    if (opts && typeof opts.popupProb === 'number') popup = Math.random() * 100 < opts.popupProb;
+    else if (opts && opts.popup === false) popup = false;
     window.chatAddSystem('TA想让你选一个答案。');
     const el = window.chatAddSystem(q.text, {
       special: 'ask-choose', choiceQuestion: q.text, choiceOptions: q.options, choicePref: q.pref, choiceCat: q.cat || ''
     });
     const idx = el ? Number(el.dataset.idx) : -1;
-    setTimeout(() => { if (idx >= 0 && window.openTC) window.openTC(idx); }, 400);
+    if (popup) setTimeout(() => { if (idx >= 0 && window.openTC) window.openTC(idx); }, 400);
   }
   // 自动触发：一次会话最多 1 个；冷却 30 分钟；概率可调（默认 15%）；启动 90 秒后、每 4 分钟轮询
   function maybeTriggerTC() {
     try {
       const d = tcLoad();
-      const s = d.settings || { enabled: true, prob: 15 };
+      const s = d.settings || { enabled: true, prob: 15, popupProb: 70 };
       if (s.enabled === false) return;
       if (_tcSessionTriggered) return;
       if (Date.now() - (d.lastChoiceAt || 0) < 30 * 60000) return;
       if (Math.random() * 100 >= (typeof s.prob === 'number' ? s.prob : 15)) return;
-      tcPush(tcPick(d));
+      const q = tcPick(d);
+      if (!q) return;
+      tcPush(q, { popupProb: askPopupProb(s) });
     } catch (e) {}
   }
   setTimeout(maybeTriggerTC, 90000);
@@ -508,9 +570,14 @@ window.openTCPanel = openTCPanel;
   // ---- 管理页：TA的小问题 ----
   function renderTCManage() {
     const d = tcLoad();
-    const s = d.settings || { enabled: true, prob: 15 };
+    const s = d.settings || { enabled: true, prob: 15, popupProb: 70 };
     const enEl = document.getElementById('tc-enable');
     if (enEl) enEl.checked = s.enabled !== false;
+    const popEl = document.getElementById('tc-popup');
+    const popVal = document.getElementById('tc-popup-val');
+    const pp = askPopupProb(s);
+    if (popEl) popEl.value = pp;
+    if (popVal) popVal.textContent = pp + '%';
     const probEl = document.getElementById('tc-prob');
     const probVal = document.getElementById('tc-prob-val');
     if (probEl) probEl.value = typeof s.prob === 'number' ? s.prob : 15;
@@ -571,6 +638,18 @@ window.openTCPanel = openTCPanel;
       tcSave(d);
       const v = document.getElementById('tc-prob-val');
       if (v) v.textContent = tcProb.value + '%';
+      toast('触发概率已设为 ' + tcProb.value + '%');
+    });
+  }
+  const tcPopup = document.getElementById('tc-popup');
+  if (tcPopup) {
+    tcPopup.addEventListener('input', () => {
+      const d = tcLoad();
+      d.settings.popupProb = parseInt(tcPopup.value, 10) || 0;
+      tcSave(d);
+      const v = document.getElementById('tc-popup-val');
+      if (v) v.textContent = tcPopup.value + '%';
+      toast('弹窗概率已设为 ' + tcPopup.value + '%');
     });
   }
   const tcNewAdd = document.getElementById('tc-new-add');
@@ -609,7 +688,8 @@ window.openTCPanel = openTCPanel;
     const d = tcLoad();
     const q = tcPick(d);
     if (!q) { toast('题库没有可用的问题'); return; }
-    tcPush(q);
+    const s = d.settings || { enabled: true, prob: 15, popupProb: 70 };
+    tcPush(q, { popupProb: askPopupProb(s) });
     toast('TA 在聊天里向你提问了');
   };
   const tcNow = document.getElementById('tc-now');
@@ -732,29 +812,34 @@ window.openTCPanel = openTCPanel;
     if (!qs.length) qs = TCU_DEFAULT.slice();
     return qs[Math.floor(Math.random() * qs.length)];
   }
-  function tcuPush(q) {
+  function tcuPush(q, opts) {
     if (!window.chatAddSystem) return;
     _tcuSessionTriggered = true;
     const d = tcuLoad();
     d.lastCuriousAt = Date.now();
     tcuSave(d);
+    let popup = true;
+    if (opts && typeof opts.popupProb === 'number') popup = Math.random() * 100 < opts.popupProb;
+    else if (opts && opts.popup === false) popup = false;
     window.chatAddSystem('TA对你有点好奇。');
     const el = window.chatAddSystem(q.text, {
       special: 'ask-curious', curiousQuestion: q.text, curiousQuick: q.quick || [], curiousReplies: q.replies || [],
       curiousFollowup: q.followup || '', curiousQid: q.id || '', curiousCat: q.cat || ''
     });
     const idx = el ? Number(el.dataset.idx) : -1;
-    setTimeout(() => { if (idx >= 0 && window.openCurious) window.openCurious(idx); }, 400);
+    if (popup) setTimeout(() => { if (idx >= 0 && window.openCurious) window.openCurious(idx); }, 400);
   }
   function maybeTriggerTCU() {
     try {
       const d = tcuLoad();
-      const s = d.settings || { enabled: true, prob: 15 };
+      const s = d.settings || { enabled: true, prob: 15, popupProb: 70 };
       if (s.enabled === false) return;
       if (_tcuSessionTriggered) return;
       if (Date.now() - (d.lastCuriousAt || 0) < 30 * 60000) return;
       if (Math.random() * 100 >= (typeof s.prob === 'number' ? s.prob : 15)) return;
-      tcuPush(tcuPick(d));
+      const q = tcuPick(d);
+      if (!q) return;
+      tcuPush(q, { popupProb: askPopupProb(s) });
     } catch (e) {}
   }
   setTimeout(maybeTriggerTCU, 90000);
@@ -849,9 +934,14 @@ window.openTCPanel = openTCPanel;
   // 好奇管理页
   function renderTCUManage() {
     const d = tcuLoad();
-    const s = d.settings || { enabled: true, prob: 15, followup: true };
+    const s = d.settings || { enabled: true, prob: 15, popupProb: 70, followup: true };
     const enEl = document.getElementById('tcu-enable');
     if (enEl) enEl.checked = s.enabled !== false;
+    const popEl = document.getElementById('tcu-popup');
+    const popVal = document.getElementById('tcu-popup-val');
+    const pp = askPopupProb(s);
+    if (popEl) popEl.value = pp;
+    if (popVal) popVal.textContent = pp + '%';
     const probEl = document.getElementById('tcu-prob');
     const probVal = document.getElementById('tcu-prob-val');
     if (probEl) probEl.value = typeof s.prob === 'number' ? s.prob : 15;
@@ -933,6 +1023,13 @@ window.openTCPanel = openTCPanel;
   if (tcuProb) tcuProb.addEventListener('input', () => {
     const d = tcuLoad(); d.settings.prob = parseInt(tcuProb.value, 10) || 15; tcuSave(d);
     const v = document.getElementById('tcu-prob-val'); if (v) v.textContent = tcuProb.value + '%';
+    toast('触发概率已设为 ' + tcuProb.value + '%');
+  });
+  const tcuPopup = document.getElementById('tcu-popup');
+  if (tcuPopup) tcuPopup.addEventListener('input', () => {
+    const d = tcuLoad(); d.settings.popupProb = parseInt(tcuPopup.value, 10) || 0; tcuSave(d);
+    const v = document.getElementById('tcu-popup-val'); if (v) v.textContent = tcuPopup.value + '%';
+    toast('弹窗概率已设为 ' + tcuPopup.value + '%');
   });
   const tcuFu = document.getElementById('tcu-followup');
   if (tcuFu) tcuFu.addEventListener('change', () => { const d = tcuLoad(); d.settings.followup = tcuFu.checked; tcuSave(d); toast(tcuFu.checked ? 'TA 偶尔会自然追问' : 'TA 不再追问'); });
@@ -963,7 +1060,8 @@ window.openTCPanel = openTCPanel;
     const d = tcuLoad();
     const q = tcuPick(d);
     if (!q) { toast('题库没有可用的问题'); return; }
-    tcuPush(q);
+    const s = d.settings || { enabled: true, prob: 15, popupProb: 70 };
+    tcuPush(q, { popupProb: askPopupProb(s) });
     toast('TA 在聊天里向你好奇了');
   };
   const tcuNow = document.getElementById('tcu-now');
@@ -1045,16 +1143,19 @@ window.openTCPanel = openTCPanel;
     if (!qs.length) qs = TR_DEFAULT.slice();
     return qs[Math.floor(Math.random() * qs.length)];
   }
-  function trPush(q) {
+  function trPush(q, opts) {
     if (!window.chatAddSystem) return;
     _trSessionTriggered = true;
     const d = trLoad();
     d.lastRoastAt = Date.now();
     trSave(d);
+    let popup = true;
+    if (opts && typeof opts.popupProb === 'number') popup = Math.random() * 100 < opts.popupProb;
+    else if (opts && opts.popup === false) popup = false;
     window.chatAddSystem('TA吐槽了你一句。');
     const el = window.chatAddSystem(q.text, { special: 'ask-roast', roastText: q.text, roastCat: q.cat || 'light' });
     const idx = el ? Number(el.dataset.idx) : -1;
-    setTimeout(() => { if (idx >= 0 && window.openRoast) window.openRoast(idx); }, 400);
+    if (popup) setTimeout(() => { if (idx >= 0 && window.openRoast) window.openRoast(idx); }, 400);
   }
   function lastUserMsg() {
     try {
@@ -1068,12 +1169,13 @@ window.openTCPanel = openTCPanel;
   function maybeTriggerTR() {
     try {
       const d = trLoad();
-      const s = d.settings || { enabled: true, prob: 30 };
+      const s = d.settings || { enabled: true, prob: 30, popupProb: 70 };
       if (s.enabled === false) return;
       if (_trSessionTriggered) return;
       if (Date.now() - (d.lastRoastAt || 0) < 30 * 60000) return;
       if (Math.random() * 100 < (typeof s.prob === 'number' ? s.prob : 30)) {
-        trPush(trPick(d, lastUserMsg()));
+        const q = trPick(d, lastUserMsg());
+        if (q) trPush(q, { popupProb: askPopupProb(s) });
       }
     } catch (e) {}
   }
@@ -1151,9 +1253,14 @@ window.openTCPanel = openTCPanel;
   // 吐槽管理页
   function renderTRManage() {
     const d = trLoad();
-    const s = d.settings || { enabled: true, prob: 30 };
+    const s = d.settings || { enabled: true, prob: 30, popupProb: 70 };
     const enEl = document.getElementById('tr-enable');
     if (enEl) enEl.checked = s.enabled !== false;
+    const popEl = document.getElementById('tr-popup');
+    const popVal = document.getElementById('tr-popup-val');
+    const pp = askPopupProb(s);
+    if (popEl) popEl.value = pp;
+    if (popVal) popVal.textContent = pp + '%';
     const probEl = document.getElementById('tr-prob');
     const probVal = document.getElementById('tr-prob-val');
     if (probEl) probEl.value = typeof s.prob === 'number' ? s.prob : 30;
@@ -1217,6 +1324,13 @@ window.openTCPanel = openTCPanel;
   if (trProb) trProb.addEventListener('input', () => {
     const d = trLoad(); d.settings.prob = parseInt(trProb.value, 10) || 30; trSave(d);
     const v = document.getElementById('tr-prob-val'); if (v) v.textContent = trProb.value + '%';
+    toast('触发概率已设为 ' + trProb.value + '%');
+  });
+  const trPopup = document.getElementById('tr-popup');
+  if (trPopup) trPopup.addEventListener('input', () => {
+    const d = trLoad(); d.settings.popupProb = parseInt(trPopup.value, 10) || 0; trSave(d);
+    const v = document.getElementById('tr-popup-val'); if (v) v.textContent = trPopup.value + '%';
+    toast('弹窗概率已设为 ' + trPopup.value + '%');
   });
   const trAdd = document.getElementById('tr-new-add');
   if (trAdd) {
@@ -1241,7 +1355,8 @@ window.openTCPanel = openTCPanel;
     const d = trLoad();
     const q = trPick(d, '');
     if (!q) { toast('题库没有可用吐槽'); return; }
-    trPush(q);
+    const s = d.settings || { enabled: true, prob: 30, popupProb: 70 };
+    trPush(q, { popupProb: askPopupProb(s) });
     toast('TA 在聊天里吐槽你了');
   };
   const trNow = document.getElementById('tr-now');
