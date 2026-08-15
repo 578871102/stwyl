@@ -2637,6 +2637,19 @@ html,body { overflow-x:hidden;
   vertical-align:middle; margin:2px 2px;
 }
 .feed-reply .feed-inline-img { max-width:60px; max-height:60px; }
+/* v3.5.94：朋友圈动态独立图片区（九宫格，仿微信）——TA 发布/我的发布共用 */
+.feed-imgs {
+  display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;
+  margin-top:8px; max-width:100%;
+}
+.feed-imgs img {
+  width:100%; aspect-ratio:1/1; object-fit:cover;
+  border-radius:8px; display:block; background:#f2f2f2;
+}
+/* 单图/双图：不撑满整行（单图按原比例，双图各占半行） */
+.feed-imgs:has(img:only-of-type) { max-width:66%; }
+.feed-imgs img:only-of-type { aspect-ratio:auto; }
+.feed-imgs:has(img:nth-of-type(2):last-of-type) { grid-template-columns:repeat(2, 1fr); max-width:80%; }
 /* 提醒跳转：目标动态高亮闪烁 */
 .feed-flash {
   animation: feedFlash 1.6s ease 2;
@@ -2765,7 +2778,7 @@ html,body { overflow-x:hidden;
       <div class="splash-title">mochi 摸鱼字卡</div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">部署于 2026-08-15 15:20</div>
+      <div class="splash-ver" id="splash-ver">部署于 2026-08-15 15:56</div>
     </div>
   </div>
   <div class="phone">
@@ -3357,6 +3370,7 @@ html,body { overflow-x:hidden;
       <div class="set-group glass">
         <div class="gs-row"><span>后台保活</span><label class="toggle"><input type="checkbox" id="bg-keepalive"><span class="tk"></span></label></div>
         <div class="gs-row"><span>后台通知</span><label class="toggle"><input type="checkbox" id="bg-notify"><span class="tk"></span></label></div>
+        <div class="gs-row"><span>全屏模式（隐藏手机状态栏）</span><label class="toggle"><input type="checkbox" id="sf-fullscreen"><span class="tk"></span></label></div>
       </div>
       <div class="set-group glass">
         <div class="set-row" id="row-export">
@@ -3376,7 +3390,7 @@ html,body { overflow-x:hidden;
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.5.92</div>
+      <div class="ver">Mochi 字卡传讯 v3.5.98</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -4925,7 +4939,6 @@ html,body { overflow-x:hidden;
     if (!window.idbGetAllKeys) return;
     window.idbGetAllKeys().then(keys => {
       if (!keys || !keys.length) return;
-      let refilled = 0;
       keys.forEach(k => {
         if (k.indexOf(uidPrefix) !== 0) return;
         // 音乐文件只存 IndexedDB（体积大），不进内存缓存、不回填 localStorage（会撑爆配额）
@@ -4941,19 +4954,12 @@ html,body { overflow-x:hidden;
             // 仅当 localStorage 无此键，或 IndexedDB 数据更新时覆盖
             if (!localStorage.getItem(k)) {
               localStorage.setItem(k, str);
-              refilled++;
             }
           } catch (e) {}
         });
       });
-      // 数据在 IndexedDB、localStorage 缺失 → 回填后刷新一次，让模块读到完整数据
-      // （防循环：sessionStorage 标记只允许一次；回填失败不刷新）
-      setTimeout(() => {
-        if (refilled > 0 && !sessionStorage.getItem('xy-idb-refilled')) {
-          try { sessionStorage.setItem('xy-idb-refilled', '1'); } catch (e) {}
-          location.reload();
-        }
-      }, 800);
+      // v3.5.98：回填数据已进 memoryCache（xyStore.get 命中），不再强制刷新页面——
+      //   之前"回填后 reload"导致用户在任何时刻点导出/操作时页面莫名刷新
     });
   };
   // v3.5.24：启动时自动从 IndexedDB 回填 localStorage 缺失的键。
@@ -4966,18 +4972,29 @@ html,body { overflow-x:hidden;
   try {
     if (!sessionStorage.getItem('xy-ls-big-migrated')) {
       let moved = 0;
+      // 先收集键再处理：避免边删边遍历导致索引跳跃漏项
+      const bigKeys = [];
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
         if (!k || k.indexOf('xy-home-v2:') !== 0) continue;
         if (k.indexOf('xy-home-v2:music-file:') === 0) continue;
         const v = localStorage.getItem(k);
-        if (v && v.length > LS_BIG_LIMIT) {
-          try { if (window.idbSet) window.idbSet(k, v); } catch (e) {}
-          try { localStorage.removeItem(k); } catch (e) {}
-          moved++;
-        }
+        if (v && v.length > LS_BIG_LIMIT) bigKeys.push(k);
       }
-      if (moved > 0) { try { sessionStorage.setItem('xy-ls-big-migrated', '1'); } catch (e) {} }
+      // v3.5.95：逐键写入成功才从 localStorage 删除（防 IDB 写失败时数据双丢）；
+      // 全部成功才置迁移标记（部分失败时下次启动会重试未迁移的键）
+      (async () => {
+        let moved = 0;
+        for (const k of bigKeys) {
+          const v = localStorage.getItem(k);
+          if (!v) continue;
+          try {
+            const ok = await window.idbSet(k, v);
+            if (ok) { try { localStorage.removeItem(k); } catch (e) {} moved++; }
+          } catch (e) {}
+        }
+        if (moved > 0) { try { sessionStorage.setItem('xy-ls-big-migrated', '1'); } catch (e) {} }
+      })();
     }
   } catch (e) {}
 })();
@@ -5001,6 +5018,22 @@ html,body { overflow-x:hidden;
 (function () {
   const splash = document.getElementById('splash');
   if (!splash) return;
+  // v3.5.96：开屏显示「部署版本（构建时注入）+ 实时时间」——手机端可随时验证是否最新部署
+  const verEl = document.getElementById('splash-ver');
+  if (verEl) {
+    const base = (verEl.textContent || '').trim();
+    const pad2 = (n) => (n < 10 ? '0' + n : '' + n);
+    const fill = () => {
+      const d = new Date();
+      const t = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+      verEl.textContent = (base ? base + ' · ' : '') + t;
+    };
+    fill();
+    const iv = setInterval(fill, 1000);
+    // 开屏结束后停止刷新
+    window.addEventListener('load', () => setTimeout(() => clearInterval(iv), 2500));
+    setTimeout(() => clearInterval(iv), 2800);
+  }
   const hide = () => {
     if (splash.classList.contains('hide')) return;
     splash.classList.add('hide');
@@ -5577,6 +5610,22 @@ html,body { overflow-x:hidden;
     });
   };
   restoreAppIcons();
+  // v3.5.95：自定义图标大键可能只存在 IndexedDB（压缩失败兜底会存原始大图）→ 补读后重新恢复图标
+  try {
+    if (window.idbGetAllKeys) {
+      window.idbGetAllKeys().then(keys => {
+        const iconKeys = (keys || []).filter(k => k.indexOf(uid + ':app-icon-') === 0);
+        if (!iconKeys.length) return;
+        let p = Promise.resolve();
+        iconKeys.forEach(k => {
+          p = p.then(() => window.idbGet(k)).then(v => {
+            if (v && typeof v === 'string' && v.length > 2) store.set(k.slice(uid.length + 1), v);
+          });
+        });
+        p.then(() => restoreAppIcons());
+      });
+    }
+  } catch (e) {}
 
   grids.forEach(grid => {
     grid.addEventListener('click', (e) => {
@@ -8611,6 +8660,14 @@ function partialRetractMsg(msgEl, side) {
   scheduleAutoSend();
   // 对外发送消息接口（占卜结果发送给 TA 等复用）
   window.chatSendMsg = (text) => { if (typeof text === 'string' && text.trim()) addMsg(text.trim()); };
+  // v3.5.94：收藏消息含图片，可能只存在 IndexedDB → 启动补读（收藏页打开时才渲染，届时读到）
+  try {
+    if (window.idbGet) {
+      window.idbGet(uid + ':fav-msgs').then(v => {
+        if (v && typeof v === 'string' && v.length > 2) store.set('fav-msgs', v);
+      });
+    }
+  } catch (e) {}
 })();
 
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
@@ -14354,6 +14411,15 @@ window.openTCPanel = openTCPanel;
   }
   render();
 
+  // v3.5.94：换头像记录含图片，可能只存在 IndexedDB → 启动补读（主页打开时才渲染，届时读到）
+  try {
+    if (window.idbGet) {
+      window.idbGet(uid + ':records-avatar').then(v => {
+        if (v && typeof v === 'string' && v.length > 2) store.set('records-avatar', v);
+      });
+    }
+  } catch (e) {}
+
   // 联系人主动来电已由 call.js 统一管理（弹窗/接听/小框/概率），此处仅保留记录存储
 })();
 
@@ -14424,7 +14490,18 @@ window.openTCPanel = openTCPanel;
               c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
               const data = c.toDataURL('image/jpeg', 0.85);
               store.set(CALL_BG_KEY, data);
-              applyCallBg();
+applyCallBg();
+  // v3.5.94：通话背景大键可能只存在 IndexedDB（导入兜底写入/大键只进 IDB）→ 启动补读后重新应用
+  try {
+    if (window.idbGet) {
+      window.idbGet(uid + ':' + CALL_BG_KEY).then(v => {
+        if (v && typeof v === 'string' && v.length > 2 && !store.get(CALL_BG_KEY)) {
+          store.set(CALL_BG_KEY, v);
+          applyCallBg();
+        }
+      });
+    }
+  } catch (e) {}
               toast('通话背景已设置');
             } catch (e) {
               toast('图片处理失败');
@@ -15066,6 +15143,15 @@ window.openTCPanel = openTCPanel;
     });
   });
   render();
+
+  // v3.5.94：信件含图片 dataURL，可能只存在 IndexedDB → 启动补读（信箱打开时才渲染，届时读到）
+  try {
+    if (window.idbGet) {
+      window.idbGet(uid + ':' + KEY).then(v => {
+        if (v && typeof v === 'string' && v.length > 2) store.set(KEY, v);
+      });
+    }
+  } catch (e) {}
 })();
 
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
@@ -15155,6 +15241,54 @@ window.openTCPanel = openTCPanel;
     }
     return parts.join(' ');
   }
+  // v3.5.94：TA 发布动态专用生成器——文字（主字卡/颜文字/emoji）与图片（表情包/图片）
+  // 分离：图片进 imgs 数组独立展示（与我的发布一致），不再混插在文字中间
+  // v3.5.95：每类独立抽随机数——各概率设置（fd-post-kaomoji/emoji/sticker/image）独立生效
+  function genPostContent(cfg) {
+    const pool = cardPool();
+    const fb = TA_COMMENT_POOL.concat(TA_REPLY_POOL);
+    const n = cfg.minCardsPost + Math.floor(Math.random() * Math.max(1, cfg.maxCardsPost - cfg.minCardsPost + 1));
+    const textParts = [];
+    const imgs = [];
+    for (let i = 0; i < n; i++) {
+      let pushed = false;
+      if (cfg.postImage > 0 && pool.image.length && Math.random() * 100 < cfg.postImage) { imgs.push(rand(pool.image)); pushed = true; }
+      if (!pushed && cfg.postSticker > 0 && pool.sticker.length && Math.random() * 100 < cfg.postSticker) { imgs.push(rand(pool.sticker)); pushed = true; }
+      if (!pushed && cfg.postEmoji > 0 && pool.emoji.length && Math.random() * 100 < cfg.postEmoji) { textParts.push(rand(pool.emoji)); pushed = true; }
+      if (!pushed && cfg.postKaomoji > 0 && pool.kaomoji.length && Math.random() * 100 < cfg.postKaomoji) { textParts.push(rand(pool.kaomoji)); pushed = true; }
+      if (!pushed) textParts.push(pool.text.length ? rand(pool.text) : rand(fb));
+    }
+    return { content: textParts.join(' '), imgs: imgs };
+  }
+  // 动态正文 HTML：文字混排 + 独立图片区（九宫格）
+  // v3.5.95：兼容旧数据 p.img 字段
+  function contentHtmlFor(p) {
+    let html = inlineBody(p.content || '');
+    const imgs = (p.imgs && p.imgs.length) ? p.imgs : (p.img ? [p.img] : []);
+    if (imgs.length) {
+      html += '<div class="feed-imgs">' + imgs.map(u => '<img src="' + u + '" alt="图片" loading="lazy">').join('') + '</div>';
+    }
+    return html;
+  }
+  // 评论区 HTML（v3.5.95：提升到模块作用域，主列表 + 全部朋友圈共用）
+  function commentsHtmlFor(p, name) {
+    if (!p.comments || !p.comments.length) return '';
+    return '<div class="feed-comments">' + p.comments.map((c, ci) => {
+      const cName = c.by === 'me' ? myName() : name;
+      const cBody = inlineBody(c.content);
+      let repliesHtml = '';
+      if (c.replies && c.replies.length) {
+        repliesHtml = '<div class="feed-replies">' + c.replies.map(r => {
+          const rName = r.by === 'me' ? myName() : name;
+          const rBody = inlineBody(r.content);
+          return '<div class="feed-reply"><b>' + rName + '</b> \u56de\u590d <b>' + cName + '</b>\uff1a' + rBody + '</div>';
+        }).join('') + '</div>';
+      }
+      return '<div class="feed-comment" data-c="' + p.id + '" data-ci="' + ci + '">' +
+        '<div class="feed-c-line"><b>' + cName + '</b>\uff1a' + cBody + '</div>' +
+        repliesHtml + '</div>';
+    }).join('') + '</div>';
+  }
   // 生成一条评论/回复内容（应用回复内容设置：多字卡概率/最多字卡数/使用表情包概率；主字卡/颜文字/emoji/表情包/图片全类别混排）
   function pickReplyContent(cfg) {
     const c = cfg || feedCfg();
@@ -15227,30 +15361,11 @@ window.openTCPanel = openTCPanel;
           const likes = p.likes && p.likes.length
             ? '<div class="feed-likes"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;vertical-align:-2px;margin-right:5px"><path d="M12 21s-7.5-4.7-9.3-9A5.3 5.3 0 0112 6.4a5.3 5.3 0 019.3 5.6c-1.8 4.3-9.3 9-9.3 9z"/></svg>' + p.likes.join('、') + ' 觉得很赞</div>'
             : '';
-          // v3.5.80：评论区 HTML 抽公共函数（主列表 + 全部朋友圈共用）
-          function commentsHtmlFor(p, name) {
-            if (!p.comments || !p.comments.length) return '';
-            return '<div class="feed-comments">' + p.comments.map((c, ci) => {
-              const cName = c.by === 'me' ? myName() : name;
-              const cBody = inlineBody(c.content);
-              let repliesHtml = '';
-              if (c.replies && c.replies.length) {
-                repliesHtml = '<div class="feed-replies">' + c.replies.map(r => {
-                  const rName = r.by === 'me' ? myName() : name;
-                  const rBody = inlineBody(r.content);
-                  return '<div class="feed-reply"><b>' + rName + '</b> \u56de\u590d <b>' + cName + '</b>\uff1a' + rBody + '</div>';
-                }).join('') + '</div>';
-              }
-              return '<div class="feed-comment" data-c="' + p.id + '" data-ci="' + ci + '">' +
-                '<div class="feed-c-line"><b>' + cName + '</b>\uff1a' + cBody + '</div>' +
-                repliesHtml + '</div>';
-            }).join('') + '</div>';
-          }
           const liked = p.likes && p.likes.some(l => l === myName());
           return '<div class="feed-post" id="feed-post-' + p.id + '"><div class="feed-head">' + avWrap +
             '<div class="feed-who"><div class="feed-name">' + author + '</div><div class="feed-time">' + fmtDT(p.ts) + '</div></div>' +
             (isMine ? '<button class="feed-del" data-id="' + p.id + '" title="删除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2"/><path d="M6 6l1 14a2 2 0 002 2h6a2 2 0 002-2l1-14"/></svg></button>' : '') + '</div>' +
-            '<div class="feed-content">' + inlineBody(p.img ? String(p.content || '') + ' ' + p.img : p.content) + '</div>' +
+            '<div class="feed-content">' + contentHtmlFor(p) + '</div>' +
             '<div class="feed-actions">' +
             '<button class="feed-act' + (liked ? ' liked' : '') + '" data-like="' + p.id + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;vertical-align:-3px;margin-right:4px"><path d="M12 21s-7.5-4.7-9.3-9A5.3 5.3 0 0112 6.4a5.3 5.3 0 019.3 5.6c-1.8 4.3-9.3 9-9.3 9z"/></svg>赞</button>' +
             '<button class="feed-act" data-comment="' + p.id + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;vertical-align:-3px;margin-right:4px"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>评论</button>' +
@@ -15313,6 +15428,11 @@ window.openTCPanel = openTCPanel;
       const p = list.find(x => x.id === pid);
       if (!p || !p.comments || !p.comments[ci] || p.comments[ci].by === 'me') return;
       showCommentBar(pid, { pid: pid, ci: ci });
+    }));
+    // v3.5.95：朋友圈图片点击放大（复用聊天大图查看器）
+    listEl.querySelectorAll('.feed-imgs img, .feed-inline-img').forEach(img => img.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (window.viewChatImage) window.viewChatImage(img.src);
     }));
   }
   // ================= 评论条（固定元素只绑定一次，v3.5.64 修复重复弹窗） =================
@@ -15764,11 +15884,10 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
     const input = document.getElementById('feed-input');
     const content = input ? input.value.trim() : '';
     if (!content && !pickedImgs.length) { toast('写点什么再发布吧'); return; }
-    // 图文混排：文字 + 多张图片（空格分隔，每张图片即 1 个字卡）
-    const body = (content || '') + (pickedImgs.length ? (content ? ' ' : '') + pickedImgs.join(' ') : '');
+    // v3.5.95：图片独立存 imgs 数组（九宫格展示，与 TA 动态一致），不再混排进文字
     const list = load();
     const id = 'f_' + Date.now();
-    list.unshift({ id: id, by: 'me', content: body, ts: Date.now(), likes: [], comments: [] });
+    list.unshift({ id: id, by: 'me', content: content, imgs: pickedImgs.slice(), ts: Date.now(), likes: [], comments: [] });
     save(list);
     pickedImgs = [];
     renderPreview();
@@ -15849,14 +15968,10 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
         store.set('feed-next', String(cfg.minInterval + Math.random() * Math.max(1, cfg.maxInterval - cfg.minInterval)));
         return;
       }
-      // 内容：最少/最多使用字卡条数（fd-min-cards-post / fd-max-cards-post）内随机条字卡，
-      // 图文混排：主字卡/颜文字/emoji/表情包/图片 全 5 类，每张图片或表情即 1 个字卡；
-      // 各类别出现概率直接取「TA 发布内容类型」4 项设置（fd-post-kaomoji/emoji/sticker/image）
-      const content = genMixedCards(cfg, cfg.minCardsPost, cfg.maxCardsPost, {
-        kaoP: cfg.postKaomoji, emoP: cfg.postEmoji, stP: cfg.postSticker, imP: cfg.postImage
-      });
+      // 内容：文字与图片分离（v3.5.94：图片/表情包独立九宫格展示，不再混插在文字中间）
+      const g = genPostContent(cfg);
       const list = load();
-      const post = { id: 'f_' + Date.now(), by: 'ta', content: content, ts: Date.now(), likes: [], comments: [] };
+      const post = { id: 'f_' + Date.now(), by: 'ta', content: g.content, imgs: g.imgs, ts: Date.now(), likes: [], comments: [] };
       list.unshift(post);
       save(list);
       store.set('feed-last', String(now));
@@ -15903,7 +16018,7 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
             : '';
           return '<div class="feed-post"><div class="feed-head">' + avHtml(av) +
             '<div class="feed-who"><div class="feed-name">' + author + '</div><div class="feed-time">' + fmtDT(p.ts) + '</div></div></div>' +
-            '<div class="feed-content">' + inlineBody(p.img ? String(p.content || '') + ' ' + p.img : p.content) + '</div>' + likes +
+            '<div class="feed-content">' + contentHtmlFor(p) + '</div>' + likes +
             commentsHtmlFor(p, author) + '</div>';
         }).join('')
       : '<div class="ta-empty">还没有动态</div>';
@@ -16072,12 +16187,41 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
   render();
   // v3.5.93：朋友圈大键（动态里的图片 dataURL）可能只存在 IndexedDB（导入兜底写入）——
   // 启动时从 IDB 补读进内存缓存后重新渲染
+  // v3.5.95：localStorage 有值时不再覆盖（防旧 IDB 值回退掉较新的本地更新）
   try {
     if (window.idbGet) {
       window.idbGet(uid + ':' + KEY).then(v => {
-        if (v && typeof v === 'string' && v.length > 2) {
+        if (v && typeof v === 'string' && v.length > 2 && !store.get(KEY)) {
           store.set(KEY, v);
           render();
+        }
+      });
+      // v3.5.94：TA 朋友圈封面也可能 >200KB → 同样补读（主列表 + 全部朋友圈封面都刷新）
+      window.idbGet(uid + ':feed-ta-cover').then(v => {
+        if (v && typeof v === 'string' && v.length > 2 && !store.get('feed-ta-cover')) {
+          store.set('feed-ta-cover', v);
+          renderCover();
+          renderFeedAllCover();
+        }
+      });
+      // v3.5.94：朋友圈背景图同样补读
+      window.idbGet(uid + ':feed-cover-bg').then(v => {
+        if (v && typeof v === 'string' && v.length > 2 && !store.get('feed-cover-bg')) {
+          store.set('feed-cover-bg', v);
+          renderCover();
+        }
+      });
+      // v3.5.95：我的头像/TA 朋友圈头像补读（压缩失败兜底可能存原始大图）
+      window.idbGet(uid + ':avatar-user').then(v => {
+        if (v && typeof v === 'string' && v.length > 2 && !store.get('avatar-user')) {
+          store.set('avatar-user', v);
+          renderCover();
+        }
+      });
+      window.idbGet(uid + ':feed-ta-avatar').then(v => {
+        if (v && typeof v === 'string' && v.length > 2 && !store.get('feed-ta-avatar')) {
+          store.set('feed-ta-avatar', v);
+          renderCover();
         }
       });
     }
@@ -16898,7 +17042,21 @@ function renderCheckinHistory() {
         const reader = new FileReader();
         reader.onload = () => {
           store.set(KEYS[key], reader.result);
-          updateVals();
+updateVals();
+
+  // v3.5.94：音效音频（dataURL）可能只存在 IndexedDB → 启动补读
+  try {
+    if (window.idbGet) {
+      ['sfx-ring', 'sfx-in', 'sfx-out'].forEach(key => {
+        window.idbGet(uid + ':' + key).then(v => {
+          if (v && typeof v === 'string' && v.length > 2 && !store.get(key)) {
+            store.set(key, v);
+            updateVals();
+          }
+        });
+      });
+    }
+  } catch (e) {}
           toast(NAMES[key] + '音效已设置');
         };
         reader.onerror = () => { toast('音频读取失败'); };
@@ -16965,6 +17123,73 @@ function renderCheckinHistory() {
 
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
 (function () { try {
+// ===== 功能：全屏模式（v3.5.93） =====
+// 安卓 Chrome PWA standalone 会保留系统状态栏（顶部时间/电量）——manifest 无法隐藏。
+// 提供设置页「全屏模式」开关：开启后用 Fullscreen API 真正全屏（隐藏系统状态栏）。
+(function () {
+  const uid = 'xy-home-v2';
+  const store = {
+    get(k){ try { return localStorage.getItem(uid + ':' + k); } catch(e){ return null; } },
+    set(k, v){ try { localStorage.setItem(uid + ':' + k, v); } catch(e){} }
+  };
+  const FS_KEY = 'fullscreen-enabled';
+
+  function fsSupported() {
+    return typeof document.documentElement.requestFullscreen === 'function';
+  }
+  function isFullscreen() {
+    return !!(document.fullscreenElement || document.webkitFullscreenElement);
+  }
+  function enterFs() {
+    try {
+      const el = document.documentElement;
+      if (el.requestFullscreen) el.requestFullscreen();
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    } catch (e) {}
+  }
+  function exitFs() {
+    try {
+      if (document.exitFullscreen) document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    } catch (e) {}
+  }
+  // 启动时若用户开过全屏且处于 PWA 环境，尝试恢复（需用户手势才能生效时静默跳过）
+  function syncToggle() {
+    const el = document.getElementById('sf-fullscreen');
+    if (el) el.checked = isFullscreen();
+  }
+  const fsToggle = document.getElementById('sf-fullscreen');
+  if (fsToggle) {
+    fsToggle.addEventListener('change', () => {
+      if (fsToggle.checked) {
+        if (!fsSupported()) { fsToggle.checked = false; return; }
+        enterFs();
+      } else {
+        exitFs();
+      }
+    });
+  }
+  // 退出全屏（Esc 键/手势）时同步开关状态
+  document.addEventListener('fullscreenchange', syncToggle);
+  document.addEventListener('webkitfullscreenchange', syncToggle);
+  // 页面加载后：若全屏开关记忆为开且当前不在全屏，尝试进入（部分浏览器首帧可生效）
+  try {
+    if (store.get(FS_KEY) === '1' && fsSupported() && !isFullscreen()) {
+      // Fullscreen API 通常需要用户手势；自动调用会被浏览器拦截，静默失败即可
+      enterFs();
+    }
+  } catch (e) {}
+  // 记录开关状态（供下次启动尝试恢复）
+  const obs = new MutationObserver(() => {
+    const el = document.getElementById('sf-fullscreen');
+    if (el) store.set(FS_KEY, el.checked ? '1' : '0');
+  });
+  const el0 = document.getElementById('sf-fullscreen');
+  if (el0) { obs.observe(el0, { attributes: true, attributeFilter: ['checked'] }); }
+})();
+
+} catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
+(function () { try {
 // ===== 功能：导出数据 / 导入数据 =====
 // 导出：收集全部本地数据（localStorage + IndexedDB 音乐文件/字卡/查岗记录）打包为 JSON 下载
 // 导入：读取备份 JSON，确认后覆盖恢复并刷新页面
@@ -17016,29 +17241,31 @@ function renderCheckinHistory() {
   }
 
   // 导出：localStorage + IndexedDB
-  // v3.5.91：大键（dataURL 图片类 >20KB）同时镜像进 idb——手机 5MB localStorage
-  // 装不下几十 MB 图片时，导入走 IndexedDB（配额大得多），localStorage 只写小键，不再丢数据
+  // v3.5.97：不受任何大小限制——按 IndexedDB / localStorage 实际数据全量导出。
+  //   音乐文件、图片、聊天记录全部包含；导入时大键进 IndexedDB、小键进 localStorage，完整还原。
   async function doExport() {
     const data = { version: '1.0', app: 'mochi-zika', exportTime: new Date().toISOString(), ls: {}, idb: {} };
+    const add = (k, v) => {
+      // 大键只进 data.idb（单镜像，导入进 IndexedDB）；小键进 data.ls
+      if (byteLen(v) > 20 * 1024) data.idb[k] = v;
+      else data.ls[k] = v;
+    };
     try {
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
         if (!k || k.indexOf(uid + ':') !== 0) continue;
-        const v = localStorage.getItem(k);
-        data.ls[k] = v;
-        // 大键镜像进 IDB（含聊天记录与图片类）
-        if (byteLen(v) > 20 * 1024) data.idb[k] = v;
+        add(k, localStorage.getItem(k));
       }
     } catch (e) {}
-    // IndexedDB：音乐文件等权威数据
+    // IndexedDB：音乐文件、字卡、聊天记录等全部权威数据
     if (window.idbGetAllKeys) {
       try {
         const keys = await window.idbGetAllKeys();
         for (const k of keys || []) {
           if (k.indexOf(uid + ':') !== 0) continue;
-          if (k in data.idb) continue; // 已在上面镜像
+          if (k in data.ls || k in data.idb) continue; // 已在上面收录
           const v = await window.idbGet(k);
-          if (v !== undefined && v !== null) data.idb[k] = v;
+          if (v !== undefined && v !== null) add(k, v);
         }
       } catch (e) {}
     }
@@ -17050,7 +17277,7 @@ function renderCheckinHistory() {
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-    toast('数据已导出（' + Math.round(json.length / 1024) + ' KB）');
+    toast('数据已导出（' + Math.round(json.length / 1024) + ' KB，全部数据完整）');
   }
 
   // 导入
@@ -17161,17 +17388,21 @@ function renderCheckinHistory() {
       // 设置/昵称/聊天文字/字卡文字等小键保证完整恢复。
       const skipSet = {};
       dropped.forEach(e => { skipSet[e.k] = true; });
-      let dropBytes = dropped.reduce((s, e) => s + e.len, 0);
 
       clearLs();
       let writeFailed = [];
       // v3.5.93：被配额跳过的超大键与写入失败的键不再丢弃——
       // 改写入 IndexedDB（配额远大于 localStorage），启动时自动从 IDB 恢复，数据不丢
+      // v3.5.94：写入成功的键若 >200KB，也与运行时策略一致移进 IDB（避免占满 5MB 配额）
       const idbFalls = [];
       for (const e of entries) {
         if (skipSet[e.k]) { idbFalls.push({ k: e.k, v: data.ls[e.k] }); continue; }
         try {
           localStorage.setItem(e.k, data.ls[e.k]);
+          if (e.len > 200 * 1024) {
+            try { localStorage.removeItem(e.k); } catch (err2) {}
+            idbFalls.push({ k: e.k, v: data.ls[e.k] });
+          }
         } catch (err) {
           writeFailed.push(e.k);
           idbFalls.push({ k: e.k, v: data.ls[e.k] });
@@ -17191,8 +17422,8 @@ function renderCheckinHistory() {
         if (chatMoved) parts.push('聊天记录已存入 IndexedDB（不占浏览器小存储）');
         if (writeFailed.length) parts.push(writeFailed.length + ' 项写入失败（存储空间满）');
         if (idbFalls.length) {
-          const mb = (dropBytes / 1048576).toFixed(1);
-          parts.push('超大图片/音乐 ' + idbFalls.length + ' 项（约 ' + mb + ' MB）已存入 IndexedDB，不占小存储');
+          const mb = (idbFalls.reduce((s, f) => s + byteLen(f.v), 0) / 1048576).toFixed(1);
+          parts.push('大文件 ' + idbFalls.length + ' 项（约 ' + mb + ' MB）已存入 IndexedDB，不占小存储');
         }
         if (!parts.length) parts.push('导入成功');
         const msg = parts.join('；');
@@ -17256,6 +17487,14 @@ function renderCheckinHistory() {
   let deferredPrompt = null;
   const btn = document.getElementById('pwa-install');
   const hide = () => { if (btn) btn.hidden = true; };
+  function toast(msg) {
+    let t = document.getElementById('cc-toast');
+    if (!t) { t = document.createElement('div'); t.id = 'cc-toast'; document.body.appendChild(t); }
+    t.textContent = msg;
+    t.className = 'cc-toast show';
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 3000);
+  }
 
   window.addEventListener('beforeinstallprompt', (e) => {
     // 不阻止默认行为：让浏览器自由弹安装提示，菜单安装不受影响

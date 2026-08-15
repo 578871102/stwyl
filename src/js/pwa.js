@@ -27,6 +27,14 @@
   let deferredPrompt = null;
   const btn = document.getElementById('pwa-install');
   const hide = () => { if (btn) btn.hidden = true; };
+  function toast(msg) {
+    let t = document.getElementById('cc-toast');
+    if (!t) { t = document.createElement('div'); t.id = 'cc-toast'; document.body.appendChild(t); }
+    t.textContent = msg;
+    t.className = 'cc-toast show';
+    clearTimeout(t._timer);
+    t._timer = setTimeout(() => { t.className = 'cc-toast'; }, 3000);
+  }
 
   window.addEventListener('beforeinstallprompt', (e) => {
     // 不阻止默认行为：让浏览器自由弹安装提示，菜单安装不受影响

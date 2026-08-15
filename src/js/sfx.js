@@ -45,7 +45,21 @@
         const reader = new FileReader();
         reader.onload = () => {
           store.set(KEYS[key], reader.result);
-          updateVals();
+updateVals();
+
+  // v3.5.94：音效音频（dataURL）可能只存在 IndexedDB → 启动补读
+  try {
+    if (window.idbGet) {
+      ['sfx-ring', 'sfx-in', 'sfx-out'].forEach(key => {
+        window.idbGet(uid + ':' + key).then(v => {
+          if (v && typeof v === 'string' && v.length > 2 && !store.get(key)) {
+            store.set(key, v);
+            updateVals();
+          }
+        });
+      });
+    }
+  } catch (e) {}
           toast(NAMES[key] + '音效已设置');
         };
         reader.onerror = () => { toast('音频读取失败'); };

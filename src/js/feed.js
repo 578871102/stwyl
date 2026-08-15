@@ -83,6 +83,54 @@
     }
     return parts.join(' ');
   }
+  // v3.5.94：TA 发布动态专用生成器——文字（主字卡/颜文字/emoji）与图片（表情包/图片）
+  // 分离：图片进 imgs 数组独立展示（与我的发布一致），不再混插在文字中间
+  // v3.5.95：每类独立抽随机数——各概率设置（fd-post-kaomoji/emoji/sticker/image）独立生效
+  function genPostContent(cfg) {
+    const pool = cardPool();
+    const fb = TA_COMMENT_POOL.concat(TA_REPLY_POOL);
+    const n = cfg.minCardsPost + Math.floor(Math.random() * Math.max(1, cfg.maxCardsPost - cfg.minCardsPost + 1));
+    const textParts = [];
+    const imgs = [];
+    for (let i = 0; i < n; i++) {
+      let pushed = false;
+      if (cfg.postImage > 0 && pool.image.length && Math.random() * 100 < cfg.postImage) { imgs.push(rand(pool.image)); pushed = true; }
+      if (!pushed && cfg.postSticker > 0 && pool.sticker.length && Math.random() * 100 < cfg.postSticker) { imgs.push(rand(pool.sticker)); pushed = true; }
+      if (!pushed && cfg.postEmoji > 0 && pool.emoji.length && Math.random() * 100 < cfg.postEmoji) { textParts.push(rand(pool.emoji)); pushed = true; }
+      if (!pushed && cfg.postKaomoji > 0 && pool.kaomoji.length && Math.random() * 100 < cfg.postKaomoji) { textParts.push(rand(pool.kaomoji)); pushed = true; }
+      if (!pushed) textParts.push(pool.text.length ? rand(pool.text) : rand(fb));
+    }
+    return { content: textParts.join(' '), imgs: imgs };
+  }
+  // 动态正文 HTML：文字混排 + 独立图片区（九宫格）
+  // v3.5.95：兼容旧数据 p.img 字段
+  function contentHtmlFor(p) {
+    let html = inlineBody(p.content || '');
+    const imgs = (p.imgs && p.imgs.length) ? p.imgs : (p.img ? [p.img] : []);
+    if (imgs.length) {
+      html += '<div class="feed-imgs">' + imgs.map(u => '<img src="' + u + '" alt="图片" loading="lazy">').join('') + '</div>';
+    }
+    return html;
+  }
+  // 评论区 HTML（v3.5.95：提升到模块作用域，主列表 + 全部朋友圈共用）
+  function commentsHtmlFor(p, name) {
+    if (!p.comments || !p.comments.length) return '';
+    return '<div class="feed-comments">' + p.comments.map((c, ci) => {
+      const cName = c.by === 'me' ? myName() : name;
+      const cBody = inlineBody(c.content);
+      let repliesHtml = '';
+      if (c.replies && c.replies.length) {
+        repliesHtml = '<div class="feed-replies">' + c.replies.map(r => {
+          const rName = r.by === 'me' ? myName() : name;
+          const rBody = inlineBody(r.content);
+          return '<div class="feed-reply"><b>' + rName + '</b> \u56de\u590d <b>' + cName + '</b>\uff1a' + rBody + '</div>';
+        }).join('') + '</div>';
+      }
+      return '<div class="feed-comment" data-c="' + p.id + '" data-ci="' + ci + '">' +
+        '<div class="feed-c-line"><b>' + cName + '</b>\uff1a' + cBody + '</div>' +
+        repliesHtml + '</div>';
+    }).join('') + '</div>';
+  }
   // 生成一条评论/回复内容（应用回复内容设置：多字卡概率/最多字卡数/使用表情包概率；主字卡/颜文字/emoji/表情包/图片全类别混排）
   function pickReplyContent(cfg) {
     const c = cfg || feedCfg();
@@ -155,30 +203,11 @@
           const likes = p.likes && p.likes.length
             ? '<div class="feed-likes"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;vertical-align:-2px;margin-right:5px"><path d="M12 21s-7.5-4.7-9.3-9A5.3 5.3 0 0112 6.4a5.3 5.3 0 019.3 5.6c-1.8 4.3-9.3 9-9.3 9z"/></svg>' + p.likes.join('、') + ' 觉得很赞</div>'
             : '';
-          // v3.5.80：评论区 HTML 抽公共函数（主列表 + 全部朋友圈共用）
-          function commentsHtmlFor(p, name) {
-            if (!p.comments || !p.comments.length) return '';
-            return '<div class="feed-comments">' + p.comments.map((c, ci) => {
-              const cName = c.by === 'me' ? myName() : name;
-              const cBody = inlineBody(c.content);
-              let repliesHtml = '';
-              if (c.replies && c.replies.length) {
-                repliesHtml = '<div class="feed-replies">' + c.replies.map(r => {
-                  const rName = r.by === 'me' ? myName() : name;
-                  const rBody = inlineBody(r.content);
-                  return '<div class="feed-reply"><b>' + rName + '</b> \u56de\u590d <b>' + cName + '</b>\uff1a' + rBody + '</div>';
-                }).join('') + '</div>';
-              }
-              return '<div class="feed-comment" data-c="' + p.id + '" data-ci="' + ci + '">' +
-                '<div class="feed-c-line"><b>' + cName + '</b>\uff1a' + cBody + '</div>' +
-                repliesHtml + '</div>';
-            }).join('') + '</div>';
-          }
           const liked = p.likes && p.likes.some(l => l === myName());
           return '<div class="feed-post" id="feed-post-' + p.id + '"><div class="feed-head">' + avWrap +
             '<div class="feed-who"><div class="feed-name">' + author + '</div><div class="feed-time">' + fmtDT(p.ts) + '</div></div>' +
             (isMine ? '<button class="feed-del" data-id="' + p.id + '" title="删除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2"/><path d="M6 6l1 14a2 2 0 002 2h6a2 2 0 002-2l1-14"/></svg></button>' : '') + '</div>' +
-            '<div class="feed-content">' + inlineBody(p.img ? String(p.content || '') + ' ' + p.img : p.content) + '</div>' +
+            '<div class="feed-content">' + contentHtmlFor(p) + '</div>' +
             '<div class="feed-actions">' +
             '<button class="feed-act' + (liked ? ' liked' : '') + '" data-like="' + p.id + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;vertical-align:-3px;margin-right:4px"><path d="M12 21s-7.5-4.7-9.3-9A5.3 5.3 0 0112 6.4a5.3 5.3 0 019.3 5.6c-1.8 4.3-9.3 9-9.3 9z"/></svg>赞</button>' +
             '<button class="feed-act" data-comment="' + p.id + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;vertical-align:-3px;margin-right:4px"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>评论</button>' +
@@ -241,6 +270,11 @@
       const p = list.find(x => x.id === pid);
       if (!p || !p.comments || !p.comments[ci] || p.comments[ci].by === 'me') return;
       showCommentBar(pid, { pid: pid, ci: ci });
+    }));
+    // v3.5.95：朋友圈图片点击放大（复用聊天大图查看器）
+    listEl.querySelectorAll('.feed-imgs img, .feed-inline-img').forEach(img => img.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (window.viewChatImage) window.viewChatImage(img.src);
     }));
   }
   // ================= 评论条（固定元素只绑定一次，v3.5.64 修复重复弹窗） =================
@@ -692,11 +726,10 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
     const input = document.getElementById('feed-input');
     const content = input ? input.value.trim() : '';
     if (!content && !pickedImgs.length) { toast('写点什么再发布吧'); return; }
-    // 图文混排：文字 + 多张图片（空格分隔，每张图片即 1 个字卡）
-    const body = (content || '') + (pickedImgs.length ? (content ? ' ' : '') + pickedImgs.join(' ') : '');
+    // v3.5.95：图片独立存 imgs 数组（九宫格展示，与 TA 动态一致），不再混排进文字
     const list = load();
     const id = 'f_' + Date.now();
-    list.unshift({ id: id, by: 'me', content: body, ts: Date.now(), likes: [], comments: [] });
+    list.unshift({ id: id, by: 'me', content: content, imgs: pickedImgs.slice(), ts: Date.now(), likes: [], comments: [] });
     save(list);
     pickedImgs = [];
     renderPreview();
@@ -777,14 +810,10 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
         store.set('feed-next', String(cfg.minInterval + Math.random() * Math.max(1, cfg.maxInterval - cfg.minInterval)));
         return;
       }
-      // 内容：最少/最多使用字卡条数（fd-min-cards-post / fd-max-cards-post）内随机条字卡，
-      // 图文混排：主字卡/颜文字/emoji/表情包/图片 全 5 类，每张图片或表情即 1 个字卡；
-      // 各类别出现概率直接取「TA 发布内容类型」4 项设置（fd-post-kaomoji/emoji/sticker/image）
-      const content = genMixedCards(cfg, cfg.minCardsPost, cfg.maxCardsPost, {
-        kaoP: cfg.postKaomoji, emoP: cfg.postEmoji, stP: cfg.postSticker, imP: cfg.postImage
-      });
+      // 内容：文字与图片分离（v3.5.94：图片/表情包独立九宫格展示，不再混插在文字中间）
+      const g = genPostContent(cfg);
       const list = load();
-      const post = { id: 'f_' + Date.now(), by: 'ta', content: content, ts: Date.now(), likes: [], comments: [] };
+      const post = { id: 'f_' + Date.now(), by: 'ta', content: g.content, imgs: g.imgs, ts: Date.now(), likes: [], comments: [] };
       list.unshift(post);
       save(list);
       store.set('feed-last', String(now));
@@ -831,7 +860,7 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
             : '';
           return '<div class="feed-post"><div class="feed-head">' + avHtml(av) +
             '<div class="feed-who"><div class="feed-name">' + author + '</div><div class="feed-time">' + fmtDT(p.ts) + '</div></div></div>' +
-            '<div class="feed-content">' + inlineBody(p.img ? String(p.content || '') + ' ' + p.img : p.content) + '</div>' + likes +
+            '<div class="feed-content">' + contentHtmlFor(p) + '</div>' + likes +
             commentsHtmlFor(p, author) + '</div>';
         }).join('')
       : '<div class="ta-empty">还没有动态</div>';
@@ -1000,12 +1029,41 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
   render();
   // v3.5.93：朋友圈大键（动态里的图片 dataURL）可能只存在 IndexedDB（导入兜底写入）——
   // 启动时从 IDB 补读进内存缓存后重新渲染
+  // v3.5.95：localStorage 有值时不再覆盖（防旧 IDB 值回退掉较新的本地更新）
   try {
     if (window.idbGet) {
       window.idbGet(uid + ':' + KEY).then(v => {
-        if (v && typeof v === 'string' && v.length > 2) {
+        if (v && typeof v === 'string' && v.length > 2 && !store.get(KEY)) {
           store.set(KEY, v);
           render();
+        }
+      });
+      // v3.5.94：TA 朋友圈封面也可能 >200KB → 同样补读（主列表 + 全部朋友圈封面都刷新）
+      window.idbGet(uid + ':feed-ta-cover').then(v => {
+        if (v && typeof v === 'string' && v.length > 2 && !store.get('feed-ta-cover')) {
+          store.set('feed-ta-cover', v);
+          renderCover();
+          renderFeedAllCover();
+        }
+      });
+      // v3.5.94：朋友圈背景图同样补读
+      window.idbGet(uid + ':feed-cover-bg').then(v => {
+        if (v && typeof v === 'string' && v.length > 2 && !store.get('feed-cover-bg')) {
+          store.set('feed-cover-bg', v);
+          renderCover();
+        }
+      });
+      // v3.5.95：我的头像/TA 朋友圈头像补读（压缩失败兜底可能存原始大图）
+      window.idbGet(uid + ':avatar-user').then(v => {
+        if (v && typeof v === 'string' && v.length > 2 && !store.get('avatar-user')) {
+          store.set('avatar-user', v);
+          renderCover();
+        }
+      });
+      window.idbGet(uid + ':feed-ta-avatar').then(v => {
+        if (v && typeof v === 'string' && v.length > 2 && !store.get('feed-ta-avatar')) {
+          store.set('feed-ta-avatar', v);
+          renderCover();
         }
       });
     }

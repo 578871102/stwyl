@@ -49,29 +49,31 @@
   }
 
   // 导出：localStorage + IndexedDB
-  // v3.5.91：大键（dataURL 图片类 >20KB）同时镜像进 idb——手机 5MB localStorage
-  // 装不下几十 MB 图片时，导入走 IndexedDB（配额大得多），localStorage 只写小键，不再丢数据
+  // v3.5.97：不受任何大小限制——按 IndexedDB / localStorage 实际数据全量导出。
+  //   音乐文件、图片、聊天记录全部包含；导入时大键进 IndexedDB、小键进 localStorage，完整还原。
   async function doExport() {
     const data = { version: '1.0', app: 'mochi-zika', exportTime: new Date().toISOString(), ls: {}, idb: {} };
+    const add = (k, v) => {
+      // 大键只进 data.idb（单镜像，导入进 IndexedDB）；小键进 data.ls
+      if (byteLen(v) > 20 * 1024) data.idb[k] = v;
+      else data.ls[k] = v;
+    };
     try {
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
         if (!k || k.indexOf(uid + ':') !== 0) continue;
-        const v = localStorage.getItem(k);
-        data.ls[k] = v;
-        // 大键镜像进 IDB（含聊天记录与图片类）
-        if (byteLen(v) > 20 * 1024) data.idb[k] = v;
+        add(k, localStorage.getItem(k));
       }
     } catch (e) {}
-    // IndexedDB：音乐文件等权威数据
+    // IndexedDB：音乐文件、字卡、聊天记录等全部权威数据
     if (window.idbGetAllKeys) {
       try {
         const keys = await window.idbGetAllKeys();
         for (const k of keys || []) {
           if (k.indexOf(uid + ':') !== 0) continue;
-          if (k in data.idb) continue; // 已在上面镜像
+          if (k in data.ls || k in data.idb) continue; // 已在上面收录
           const v = await window.idbGet(k);
-          if (v !== undefined && v !== null) data.idb[k] = v;
+          if (v !== undefined && v !== null) add(k, v);
         }
       } catch (e) {}
     }
@@ -83,7 +85,7 @@
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-    toast('数据已导出（' + Math.round(json.length / 1024) + ' KB）');
+    toast('数据已导出（' + Math.round(json.length / 1024) + ' KB，全部数据完整）');
   }
 
   // 导入
@@ -194,17 +196,21 @@
       // 设置/昵称/聊天文字/字卡文字等小键保证完整恢复。
       const skipSet = {};
       dropped.forEach(e => { skipSet[e.k] = true; });
-      let dropBytes = dropped.reduce((s, e) => s + e.len, 0);
 
       clearLs();
       let writeFailed = [];
       // v3.5.93：被配额跳过的超大键与写入失败的键不再丢弃——
       // 改写入 IndexedDB（配额远大于 localStorage），启动时自动从 IDB 恢复，数据不丢
+      // v3.5.94：写入成功的键若 >200KB，也与运行时策略一致移进 IDB（避免占满 5MB 配额）
       const idbFalls = [];
       for (const e of entries) {
         if (skipSet[e.k]) { idbFalls.push({ k: e.k, v: data.ls[e.k] }); continue; }
         try {
           localStorage.setItem(e.k, data.ls[e.k]);
+          if (e.len > 200 * 1024) {
+            try { localStorage.removeItem(e.k); } catch (err2) {}
+            idbFalls.push({ k: e.k, v: data.ls[e.k] });
+          }
         } catch (err) {
           writeFailed.push(e.k);
           idbFalls.push({ k: e.k, v: data.ls[e.k] });
@@ -224,8 +230,8 @@
         if (chatMoved) parts.push('聊天记录已存入 IndexedDB（不占浏览器小存储）');
         if (writeFailed.length) parts.push(writeFailed.length + ' 项写入失败（存储空间满）');
         if (idbFalls.length) {
-          const mb = (dropBytes / 1048576).toFixed(1);
-          parts.push('超大图片/音乐 ' + idbFalls.length + ' 项（约 ' + mb + ' MB）已存入 IndexedDB，不占小存储');
+          const mb = (idbFalls.reduce((s, f) => s + byteLen(f.v), 0) / 1048576).toFixed(1);
+          parts.push('大文件 ' + idbFalls.length + ' 项（约 ' + mb + ' MB）已存入 IndexedDB，不占小存储');
         }
         if (!parts.length) parts.push('导入成功');
         const msg = parts.join('；');

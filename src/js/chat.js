@@ -2351,4 +2351,12 @@ function partialRetractMsg(msgEl, side) {
   scheduleAutoSend();
   // 对外发送消息接口（占卜结果发送给 TA 等复用）
   window.chatSendMsg = (text) => { if (typeof text === 'string' && text.trim()) addMsg(text.trim()); };
+  // v3.5.94：收藏消息含图片，可能只存在 IndexedDB → 启动补读（收藏页打开时才渲染，届时读到）
+  try {
+    if (window.idbGet) {
+      window.idbGet(uid + ':fav-msgs').then(v => {
+        if (v && typeof v === 'string' && v.length > 2) store.set('fav-msgs', v);
+      });
+    }
+  } catch (e) {}
 })();

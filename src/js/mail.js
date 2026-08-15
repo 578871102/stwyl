@@ -322,4 +322,13 @@
     });
   });
   render();
+
+  // v3.5.94：信件含图片 dataURL，可能只存在 IndexedDB → 启动补读（信箱打开时才渲染，届时读到）
+  try {
+    if (window.idbGet) {
+      window.idbGet(uid + ':' + KEY).then(v => {
+        if (v && typeof v === 'string' && v.length > 2) store.set(KEY, v);
+      });
+    }
+  } catch (e) {}
 })();

@@ -357,6 +357,22 @@
     });
   };
   restoreAppIcons();
+  // v3.5.95：自定义图标大键可能只存在 IndexedDB（压缩失败兜底会存原始大图）→ 补读后重新恢复图标
+  try {
+    if (window.idbGetAllKeys) {
+      window.idbGetAllKeys().then(keys => {
+        const iconKeys = (keys || []).filter(k => k.indexOf(uid + ':app-icon-') === 0);
+        if (!iconKeys.length) return;
+        let p = Promise.resolve();
+        iconKeys.forEach(k => {
+          p = p.then(() => window.idbGet(k)).then(v => {
+            if (v && typeof v === 'string' && v.length > 2) store.set(k.slice(uid.length + 1), v);
+          });
+        });
+        p.then(() => restoreAppIcons());
+      });
+    }
+  } catch (e) {}
 
   grids.forEach(grid => {
     grid.addEventListener('click', (e) => {

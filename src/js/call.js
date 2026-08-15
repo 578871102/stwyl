@@ -63,7 +63,18 @@
               c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
               const data = c.toDataURL('image/jpeg', 0.85);
               store.set(CALL_BG_KEY, data);
-              applyCallBg();
+applyCallBg();
+  // v3.5.94：通话背景大键可能只存在 IndexedDB（导入兜底写入/大键只进 IDB）→ 启动补读后重新应用
+  try {
+    if (window.idbGet) {
+      window.idbGet(uid + ':' + CALL_BG_KEY).then(v => {
+        if (v && typeof v === 'string' && v.length > 2 && !store.get(CALL_BG_KEY)) {
+          store.set(CALL_BG_KEY, v);
+          applyCallBg();
+        }
+      });
+    }
+  } catch (e) {}
               toast('通话背景已设置');
             } catch (e) {
               toast('图片处理失败');

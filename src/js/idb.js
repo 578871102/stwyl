@@ -144,7 +144,6 @@
     if (!window.idbGetAllKeys) return;
     window.idbGetAllKeys().then(keys => {
       if (!keys || !keys.length) return;
-      let refilled = 0;
       keys.forEach(k => {
         if (k.indexOf(uidPrefix) !== 0) return;
         // 音乐文件只存 IndexedDB（体积大），不进内存缓存、不回填 localStorage（会撑爆配额）
@@ -160,19 +159,12 @@
             // 仅当 localStorage 无此键，或 IndexedDB 数据更新时覆盖
             if (!localStorage.getItem(k)) {
               localStorage.setItem(k, str);
-              refilled++;
             }
           } catch (e) {}
         });
       });
-      // 数据在 IndexedDB、localStorage 缺失 → 回填后刷新一次，让模块读到完整数据
-      // （防循环：sessionStorage 标记只允许一次；回填失败不刷新）
-      setTimeout(() => {
-        if (refilled > 0 && !sessionStorage.getItem('xy-idb-refilled')) {
-          try { sessionStorage.setItem('xy-idb-refilled', '1'); } catch (e) {}
-          location.reload();
-        }
-      }, 800);
+      // v3.5.98：回填数据已进 memoryCache（xyStore.get 命中），不再强制刷新页面——
+      //   之前"回填后 reload"导致用户在任何时刻点导出/操作时页面莫名刷新
     });
   };
   // v3.5.24：启动时自动从 IndexedDB 回填 localStorage 缺失的键。
@@ -185,18 +177,29 @@
   try {
     if (!sessionStorage.getItem('xy-ls-big-migrated')) {
       let moved = 0;
+      // 先收集键再处理：避免边删边遍历导致索引跳跃漏项
+      const bigKeys = [];
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
         if (!k || k.indexOf('xy-home-v2:') !== 0) continue;
         if (k.indexOf('xy-home-v2:music-file:') === 0) continue;
         const v = localStorage.getItem(k);
-        if (v && v.length > LS_BIG_LIMIT) {
-          try { if (window.idbSet) window.idbSet(k, v); } catch (e) {}
-          try { localStorage.removeItem(k); } catch (e) {}
-          moved++;
-        }
+        if (v && v.length > LS_BIG_LIMIT) bigKeys.push(k);
       }
-      if (moved > 0) { try { sessionStorage.setItem('xy-ls-big-migrated', '1'); } catch (e) {} }
+      // v3.5.95：逐键写入成功才从 localStorage 删除（防 IDB 写失败时数据双丢）；
+      // 全部成功才置迁移标记（部分失败时下次启动会重试未迁移的键）
+      (async () => {
+        let moved = 0;
+        for (const k of bigKeys) {
+          const v = localStorage.getItem(k);
+          if (!v) continue;
+          try {
+            const ok = await window.idbSet(k, v);
+            if (ok) { try { localStorage.removeItem(k); } catch (e) {} moved++; }
+          } catch (e) {}
+        }
+        if (moved > 0) { try { sessionStorage.setItem('xy-ls-big-migrated', '1'); } catch (e) {} }
+      })();
     }
   } catch (e) {}
 })();

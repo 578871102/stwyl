@@ -177,5 +177,14 @@
   }
   render();
 
+  // v3.5.94：换头像记录含图片，可能只存在 IndexedDB → 启动补读（主页打开时才渲染，届时读到）
+  try {
+    if (window.idbGet) {
+      window.idbGet(uid + ':records-avatar').then(v => {
+        if (v && typeof v === 'string' && v.length > 2) store.set('records-avatar', v);
+      });
+    }
+  } catch (e) {}
+
   // 联系人主动来电已由 call.js 统一管理（弹窗/接听/小框/概率），此处仅保留记录存储
 })();
