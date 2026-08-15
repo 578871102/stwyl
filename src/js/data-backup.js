@@ -198,30 +198,40 @@
 
       clearLs();
       let writeFailed = [];
+      // v3.5.93：被配额跳过的超大键与写入失败的键不再丢弃——
+      // 改写入 IndexedDB（配额远大于 localStorage），启动时自动从 IDB 恢复，数据不丢
+      const idbFalls = [];
       for (const e of entries) {
-        if (skipSet[e.k]) continue;
+        if (skipSet[e.k]) { idbFalls.push({ k: e.k, v: data.ls[e.k] }); continue; }
         try {
           localStorage.setItem(e.k, data.ls[e.k]);
         } catch (err) {
           writeFailed.push(e.k);
+          idbFalls.push({ k: e.k, v: data.ls[e.k] });
         }
       }
-      // v3.5.91：写入失败不整体回滚——大部分数据已写入，失败项单独提示即可
-
-      // ---- 5. 汇总 + 提示（丢弃/写入失败都有明确提示，不再静默丢数据） ----
-      const parts = [];
-      if (idbOk) parts.push('音乐/字卡/查岗等大文件已恢复');
-      else if (data.idb && Object.keys(data.idb).length) parts.push('⚠ IndexedDB 恢复失败，字卡/音乐/查岗等大文件可能缺失，建议重新导入');
-      if (chatMoved) parts.push('聊天记录已存入 IndexedDB（不占浏览器小存储）');
-      if (writeFailed.length) parts.push(writeFailed.length + ' 项写入失败（存储空间满），已尝试尽量恢复其余数据');
-      if (dropped.length) {
-        const mb = (dropBytes / 1048576).toFixed(1);
-        parts.push('存储容量有限，已跳过超大图片/音乐 ' + dropped.length + ' 项（约 ' + mb + ' MB，可在聊天/头像库中重新添加）');
-      }
-      if (!parts.length) parts.push('导入成功');
-      const msg = parts.join('；');
-      toast(msg + '，正在刷新…');
-      setTimeout(() => location.reload(), 900);
+      // 等待 IDB 兜底写入全部完成后，再提示 + 刷新
+      let fallsOk = 0;
+      let p = Promise.resolve();
+      idbFalls.forEach(f => {
+        p = p.then(() => (window.idbSet ? window.idbSet(f.k, f.v) : Promise.resolve(false)))
+          .then(ok => { if (ok) fallsOk++; });
+      });
+      p.then(() => {
+        const parts = [];
+        if (idbOk) parts.push('音乐/字卡/查岗等大文件已恢复');
+        else if (data.idb && Object.keys(data.idb).length) parts.push('⚠ IndexedDB 恢复失败，字卡/音乐/查岗等大文件可能缺失，建议重新导入');
+        if (chatMoved) parts.push('聊天记录已存入 IndexedDB（不占浏览器小存储）');
+        if (writeFailed.length) parts.push(writeFailed.length + ' 项写入失败（存储空间满）');
+        if (idbFalls.length) {
+          const mb = (dropBytes / 1048576).toFixed(1);
+          parts.push('超大图片/音乐 ' + idbFalls.length + ' 项（约 ' + mb + ' MB）已存入 IndexedDB，不占小存储');
+        }
+        if (!parts.length) parts.push('导入成功');
+        const msg = parts.join('；');
+        toast(msg + '，正在刷新…');
+        setTimeout(() => location.reload(), 900);
+      });
     });
   }
 

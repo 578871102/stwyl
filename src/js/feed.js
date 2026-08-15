@@ -998,4 +998,16 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
   const pubBtn = document.getElementById('feed-publish');
   if (pubBtn) pubBtn.addEventListener('click', publish);
   render();
+  // v3.5.93：朋友圈大键（动态里的图片 dataURL）可能只存在 IndexedDB（导入兜底写入）——
+  // 启动时从 IDB 补读进内存缓存后重新渲染
+  try {
+    if (window.idbGet) {
+      window.idbGet(uid + ':' + KEY).then(v => {
+        if (v && typeof v === 'string' && v.length > 2) {
+          store.set(KEY, v);
+          render();
+        }
+      });
+    }
+  } catch (e) {}
 })();

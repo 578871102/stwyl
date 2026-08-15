@@ -339,4 +339,23 @@
     });
   }
   applyCss();
+
+  // v3.5.93：聊天壁纸/上传字体等大键可能只存在 IndexedDB（导入兜底写入/大键只进 IDB）——
+  // 启动时从 IDB 补读后重新应用
+  try {
+    if (window.idbGet) {
+      window.idbGet(uid + ':cs-bg').then(v => {
+        if (v && typeof v === 'string' && v.length > 2 && !store.get('cs-bg')) {
+          store.set('cs-bg', v);
+          applySettings();
+        }
+      });
+      window.idbGet(uid + ':' + FONT_KEY).then(v => {
+        if (v && typeof v === 'string' && v.length > 2 && !store.get(FONT_KEY)) {
+          store.set(FONT_KEY, v);
+          applyFont();
+        }
+      });
+    }
+  } catch (e) {}
 })();

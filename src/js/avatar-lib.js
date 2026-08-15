@@ -281,4 +281,15 @@
   checkAvatarLibRefresh();
 
   syncVal();
+  // v3.5.93：头像池大键（图片 dataURL）可能只存在 IndexedDB（导入兜底写入/运行时大键策略），
+  // localStorage 读不到 → 启动时从 IDB 补读进内存缓存；半框是打开时才渲染的，届时自然读到
+  try {
+    if (window.idbGet) {
+      window.idbGet(uid + ':avatar-lib').then(v => {
+        if (v && typeof v === 'string' && v.length > 2) {
+          store.set('avatar-lib', v);
+        }
+      });
+    }
+  } catch (e) {}
 })();

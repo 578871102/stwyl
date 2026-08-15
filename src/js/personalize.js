@@ -324,6 +324,18 @@
     mo.observe(homePage, { attributes: true, attributeFilter: ['hidden'] });
   }
   applyBgVisibility();
+  // v3.5.93：桌面壁纸大键可能只存在 IndexedDB（导入兜底写入/大键只进 IDB）——
+  // 启动时从 IDB 补读后重新应用
+  try {
+    if (window.idbGet) {
+      window.idbGet(uid + ':phone-bg').then(v => {
+        if (v && typeof v === 'string' && v.length > 2 && !store.get('phone-bg')) {
+          store.set('phone-bg', v);
+          applyBgVisibility();
+        }
+      });
+    }
+  } catch (e) {}
 
   // 自定义手机桌面图标：点击设置项切到手机页进入编辑模式，再点击目标 app 上传替换
   // 注意：桌面分页后可能存在多个 .app-grid，全部绑定

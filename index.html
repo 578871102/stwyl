@@ -2765,7 +2765,7 @@ html,body { overflow-x:hidden;
       <div class="splash-title">mochi 摸鱼字卡</div>
       <div class="splash-dots"><i></i><i></i><i></i></div>
       <div class="splash-brand">小红书@言序（1842523578）</div>
-      <div class="splash-ver" id="splash-ver">部署于 2026-08-15 15:13</div>
+      <div class="splash-ver" id="splash-ver">部署于 2026-08-15 15:20</div>
     </div>
   </div>
   <div class="phone">
@@ -5544,6 +5544,18 @@ html,body { overflow-x:hidden;
     mo.observe(homePage, { attributes: true, attributeFilter: ['hidden'] });
   }
   applyBgVisibility();
+  // v3.5.93：桌面壁纸大键可能只存在 IndexedDB（导入兜底写入/大键只进 IDB）——
+  // 启动时从 IDB 补读后重新应用
+  try {
+    if (window.idbGet) {
+      window.idbGet(uid + ':phone-bg').then(v => {
+        if (v && typeof v === 'string' && v.length > 2 && !store.get('phone-bg')) {
+          store.set('phone-bg', v);
+          applyBgVisibility();
+        }
+      });
+    }
+  } catch (e) {}
 
   // 自定义手机桌面图标：点击设置项切到手机页进入编辑模式，再点击目标 app 上传替换
   // 注意：桌面分页后可能存在多个 .app-grid，全部绑定
@@ -9692,6 +9704,25 @@ function partialRetractMsg(msgEl, side) {
     });
   }
   applyCss();
+
+  // v3.5.93：聊天壁纸/上传字体等大键可能只存在 IndexedDB（导入兜底写入/大键只进 IDB）——
+  // 启动时从 IDB 补读后重新应用
+  try {
+    if (window.idbGet) {
+      window.idbGet(uid + ':cs-bg').then(v => {
+        if (v && typeof v === 'string' && v.length > 2 && !store.get('cs-bg')) {
+          store.set('cs-bg', v);
+          applySettings();
+        }
+      });
+      window.idbGet(uid + ':' + FONT_KEY).then(v => {
+        if (v && typeof v === 'string' && v.length > 2 && !store.get(FONT_KEY)) {
+          store.set(FONT_KEY, v);
+          applyFont();
+        }
+      });
+    }
+  } catch (e) {}
 })();
 
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
@@ -12479,6 +12510,17 @@ window.getReplyCard = function () {
   checkAvatarLibRefresh();
 
   syncVal();
+  // v3.5.93：头像池大键（图片 dataURL）可能只存在 IndexedDB（导入兜底写入/运行时大键策略），
+  // localStorage 读不到 → 启动时从 IDB 补读进内存缓存；半框是打开时才渲染的，届时自然读到
+  try {
+    if (window.idbGet) {
+      window.idbGet(uid + ':avatar-lib').then(v => {
+        if (v && typeof v === 'string' && v.length > 2) {
+          store.set('avatar-lib', v);
+        }
+      });
+    }
+  } catch (e) {}
 })();
 
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
@@ -16028,6 +16070,18 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
   const pubBtn = document.getElementById('feed-publish');
   if (pubBtn) pubBtn.addEventListener('click', publish);
   render();
+  // v3.5.93：朋友圈大键（动态里的图片 dataURL）可能只存在 IndexedDB（导入兜底写入）——
+  // 启动时从 IDB 补读进内存缓存后重新渲染
+  try {
+    if (window.idbGet) {
+      window.idbGet(uid + ':' + KEY).then(v => {
+        if (v && typeof v === 'string' && v.length > 2) {
+          store.set(KEY, v);
+          render();
+        }
+      });
+    }
+  } catch (e) {}
 })();
 
 } catch (__e) { if (window.__jsErrors) window.__jsErrors.push(String(__e && __e.message || __e)); } })();
@@ -17111,30 +17165,40 @@ function renderCheckinHistory() {
 
       clearLs();
       let writeFailed = [];
+      // v3.5.93：被配额跳过的超大键与写入失败的键不再丢弃——
+      // 改写入 IndexedDB（配额远大于 localStorage），启动时自动从 IDB 恢复，数据不丢
+      const idbFalls = [];
       for (const e of entries) {
-        if (skipSet[e.k]) continue;
+        if (skipSet[e.k]) { idbFalls.push({ k: e.k, v: data.ls[e.k] }); continue; }
         try {
           localStorage.setItem(e.k, data.ls[e.k]);
         } catch (err) {
           writeFailed.push(e.k);
+          idbFalls.push({ k: e.k, v: data.ls[e.k] });
         }
       }
-      // v3.5.91：写入失败不整体回滚——大部分数据已写入，失败项单独提示即可
-
-      // ---- 5. 汇总 + 提示（丢弃/写入失败都有明确提示，不再静默丢数据） ----
-      const parts = [];
-      if (idbOk) parts.push('音乐/字卡/查岗等大文件已恢复');
-      else if (data.idb && Object.keys(data.idb).length) parts.push('⚠ IndexedDB 恢复失败，字卡/音乐/查岗等大文件可能缺失，建议重新导入');
-      if (chatMoved) parts.push('聊天记录已存入 IndexedDB（不占浏览器小存储）');
-      if (writeFailed.length) parts.push(writeFailed.length + ' 项写入失败（存储空间满），已尝试尽量恢复其余数据');
-      if (dropped.length) {
-        const mb = (dropBytes / 1048576).toFixed(1);
-        parts.push('存储容量有限，已跳过超大图片/音乐 ' + dropped.length + ' 项（约 ' + mb + ' MB，可在聊天/头像库中重新添加）');
-      }
-      if (!parts.length) parts.push('导入成功');
-      const msg = parts.join('；');
-      toast(msg + '，正在刷新…');
-      setTimeout(() => location.reload(), 900);
+      // 等待 IDB 兜底写入全部完成后，再提示 + 刷新
+      let fallsOk = 0;
+      let p = Promise.resolve();
+      idbFalls.forEach(f => {
+        p = p.then(() => (window.idbSet ? window.idbSet(f.k, f.v) : Promise.resolve(false)))
+          .then(ok => { if (ok) fallsOk++; });
+      });
+      p.then(() => {
+        const parts = [];
+        if (idbOk) parts.push('音乐/字卡/查岗等大文件已恢复');
+        else if (data.idb && Object.keys(data.idb).length) parts.push('⚠ IndexedDB 恢复失败，字卡/音乐/查岗等大文件可能缺失，建议重新导入');
+        if (chatMoved) parts.push('聊天记录已存入 IndexedDB（不占浏览器小存储）');
+        if (writeFailed.length) parts.push(writeFailed.length + ' 项写入失败（存储空间满）');
+        if (idbFalls.length) {
+          const mb = (dropBytes / 1048576).toFixed(1);
+          parts.push('超大图片/音乐 ' + idbFalls.length + ' 项（约 ' + mb + ' MB）已存入 IndexedDB，不占小存储');
+        }
+        if (!parts.length) parts.push('导入成功');
+        const msg = parts.join('；');
+        toast(msg + '，正在刷新…');
+        setTimeout(() => location.reload(), 900);
+      });
     });
   }
 
