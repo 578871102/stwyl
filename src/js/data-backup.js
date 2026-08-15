@@ -51,7 +51,9 @@
   // 导出：localStorage + IndexedDB
   async function doExport() {
     const data = { version: '1.0', app: 'mochi-zika', exportTime: new Date().toISOString(), ls: {}, idb: {} };
-    // localStorage：全部 xy-home-v2: 键（音乐文件本体只存 IndexedDB）
+    // localStorage：全部 xy-home-v2: 键（含 chat-msgs——v3.5.90 不再跳过：
+    // 聊天记录虽双写 IndexedDB，但异步写入可能失败/缺失，localStorage 版本必须打包兜底，
+    // 否则导出→导入会丢全部聊天记录）
     try {
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
@@ -117,7 +119,10 @@
     const idbRestored = new Promise((resolve) => {
       if (!window.idbSet) { resolve(true); return; }
       const clearFirst = (window.idbClearAll && window.idbClearAll()) || Promise.resolve(true);
-      clearFirst.then(() => {
+      clearFirst.then((cleared) => {
+        // 清空失败 → 直接判失败（避免旧键残留 + 新键写入的混乱局面）
+        if (cleared !== true && !data.idb) { resolve(true); return; }
+        if (cleared !== true) { resolve(false); return; }
         if (!data.idb) { resolve(true); return; }
         const idbKeys = Object.keys(data.idb).filter(k => k.indexOf(uid + ':') === 0);
         if (!idbKeys.length) { resolve(true); return; }
@@ -151,10 +156,17 @@
 
     idbRestored.then((idbOk) => {
       // ---- 4. 写 localStorage 前先估算总字节；超配额时按体积从大到小丢弃大键 ----
-      // 聊天记录含图片（dataURL）最容易超配额；丢弃大键后小键全部保住。
-      // 聊天文字记录（chat-msgs）绝不丢；若连它一起都放不下，则整体回滚并明确提示。
+      // 聊天记录双写（localStorage + IndexedDB）：导入时 IndexedDB 已恢复完整权威版
+      // （含图片 dataURL），localStorage 无需再写超大聊天记录——启动时 loadMsgs 会
+      // 自动从 IndexedDB 恢复。这样导入不再因聊天记录占几十 MB 而整体取消。
       const lsKeys = Object.keys(data.ls).filter(k => k.indexOf(uid + ':') === 0);
-      const entries = lsKeys.map(k => ({ k: k, len: byteLen(data.ls[k]) + byteLen(k) }));
+      let entries = lsKeys.map(k => ({ k: k, len: byteLen(data.ls[k]) + byteLen(k) }));
+      let chatMoved = false;
+      if (idbOk && data.idb && typeof data.idb === 'object' && (uid + ':chat-msgs') in data.idb) {
+        const before = entries.length;
+        entries = entries.filter(e => e.k !== uid + ':chat-msgs');
+        chatMoved = entries.length < before;
+      }
       const total = entries.reduce((s, e) => s + e.len, 0);
       // 估算当前设备配额：探测能否写入 1MB 临时键（能 → 桌面 10MB 档；不能 → 手机 5MB 档）
       let quota = 5 * 1024 * 1024;
@@ -169,7 +181,8 @@
       const sorted = entries.slice().sort((a, b) => b.len - a.len);
       for (const e of sorted) {
         if (budget + LS_HEADROOM <= quota) break;
-        if (e.k === uid + ':chat-msgs') continue; // 聊天文字记录绝不丢
+        // v3.5.90：兜底路径下（IDB 无 chat-msgs）聊天记录绝不丢
+        if (e.k === uid + ':chat-msgs') continue;
         budget -= e.len;
         dropped.push(e);
       }
@@ -201,9 +214,11 @@
         return;
       }
 
-      // ---- 5. 汇总 + 提示（大键丢弃 / 未装 IDB 都有明确提示，不再静默丢数据） ----
+      // ---- 5. 汇总 + 提示（大键丢弃 / IDB 失败都有明确提示，不再静默丢数据） ----
       const parts = [];
       if (idbOk) parts.push('音乐/字卡/查岗等大文件已恢复');
+      else if (data.idb && Object.keys(data.idb).length) parts.push('⚠ IndexedDB 恢复失败，字卡/音乐/查岗等大文件可能缺失，建议重新导入');
+      if (chatMoved) parts.push('聊天记录已存入 IndexedDB（不占浏览器小存储）');
       if (dropped.length) {
         const mb = (dropBytes / 1048576).toFixed(1);
         parts.push('存储容量有限，已跳过超大图片/音乐 ' + dropped.length + ' 项（约 ' + mb + ' MB，可在聊天/头像库中重新添加）');
