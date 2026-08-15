@@ -158,14 +158,12 @@
           const likes = p.likes && p.likes.length
             ? '<div class="feed-likes"><svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;vertical-align:-2px;margin-right:5px"><path d="M12 21s-7.5-4.7-9.3-9A5.3 5.3 0 0112 6.4a5.3 5.3 0 019.3 5.6c-1.8 4.3-9.3 9-9.3 9z"/></svg>' + p.likes.join('、') + ' 觉得很赞</div>'
             : '';
-          // 评论区（v3.5.55 星言式：灰底区块、昵称高亮、回复嵌套缩进对齐；v3.5.56 评论支持图片）
-          let commentsHtml = '';
-          if (p.comments && p.comments.length) {
-            commentsHtml = '<div class="feed-comments">' + p.comments.map((c, ci) => {
+          // v3.5.80：评论区 HTML 抽公共函数（主列表 + 全部朋友圈共用）
+          function commentsHtmlFor(p, name) {
+            if (!p.comments || !p.comments.length) return '';
+            return '<div class="feed-comments">' + p.comments.map((c, ci) => {
               const cName = c.by === 'me' ? myName() : name;
-              // 评论内容：图文混排（dataURL 图片内联显示）
               const cBody = inlineBody(c.content);
-              // 回复区：嵌套缩进在对应评论下方（对称对齐）
               let repliesHtml = '';
               if (c.replies && c.replies.length) {
                 repliesHtml = '<div class="feed-replies">' + c.replies.map(r => {
@@ -187,7 +185,7 @@
             '<div class="feed-actions">' +
             '<button class="feed-act' + (liked ? ' liked' : '') + '" data-like="' + p.id + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;vertical-align:-3px;margin-right:4px"><path d="M12 21s-7.5-4.7-9.3-9A5.3 5.3 0 0112 6.4a5.3 5.3 0 019.3 5.6c-1.8 4.3-9.3 9-9.3 9z"/></svg>赞</button>' +
             '<button class="feed-act" data-comment="' + p.id + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;vertical-align:-3px;margin-right:4px"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>评论</button>' +
-            '</div>' + likes + commentsHtml + '</div>';
+            '</div>' + likes + commentsHtmlFor(p, name) + '</div>';
         }).join('')
       : '<div class="ta-empty">还没有动态，TA 会不定期分享生活</div>';
     bindEvents(listEl);
@@ -494,7 +492,7 @@ function submitComment() {
         p2.comments[comReplyTarget.ci].replies.push({ by: 'ta', content: replyText, ts: Date.now() });
         save(list2);
         render();
-        addNotice('comment', p2.id, partnerName() + ' 回复了你：' + (replyText.indexOf('data:') === 0 ? '[表情]' : replyText));
+        addNotice('comment', p2.id, partnerName() + ' 回复了你：' + noticeTextClean(replyText));
       }, (cfg.replySpeedMin + Math.random() * Math.max(1, cfg.replySpeedMax - cfg.replySpeedMin)) * 1000);
     }
     return;
@@ -524,6 +522,10 @@ function submitComment() {
 if (comSend) comSend.addEventListener('click', submitComment);
 if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); submitComment(); } });
   // ================= 通知提醒（TA 点赞/评论/发布动态 → 未读角标 + 列表 + 点击跳转） =================
+  // v3.5.81：通知文本里的 dataURL（表情包/图片）清洗为 [表情包]，避免乱码长串；面板显示缩略图
+  function noticeTextClean(s) {
+    return String(s || '').replace(/data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/=]+/g, '[表情包]');
+  }
   function notices() { try { return JSON.parse(store.get('feed-notices') || '[]'); } catch (e) { return []; } }
   function saveNotices(list) { store.set('feed-notices', JSON.stringify(list)); }
   function addNotice(type, pid, text) {
@@ -565,7 +567,7 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
             : n.type === 'comment'
               ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:14px;height:14px"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>'
               : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:14px;height:14px"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>';
-          return '<div class="feed-notice-item' + (n.read ? '' : ' new') + '" data-pid="' + n.pid + '">' + avHtml + '<span class="fn-ico">' + ico + '</span><span class="fn-text">' + String(n.text).replace(/</g, '&lt;') + '</span><span class="fn-time">' + fmtDT(n.ts) + '</span></div>';
+          return '<div class="feed-notice-item' + (n.read ? '' : ' new') + '" data-pid="' + n.pid + '">' + avHtml + '<span class="fn-ico">' + ico + '</span><span class="fn-text">' + noticeTextClean(n.text) + '</span><span class="fn-time">' + fmtDT(n.ts) + '</span></div>';
         }).join('')
       : '<div class="ta-empty">暂时没有新的提醒</div>';
     listEl.querySelectorAll('.feed-notice-item').forEach(it => it.addEventListener('click', () => {
@@ -832,7 +834,8 @@ if (comInput) comInput.addEventListener('keydown', (e) => { if (e.key === 'Enter
             : '';
           return '<div class="feed-post"><div class="feed-head">' + avHtml(av) +
             '<div class="feed-who"><div class="feed-name">' + author + '</div><div class="feed-time">' + fmtDT(p.ts) + '</div></div></div>' +
-            '<div class="feed-content">' + inlineBody(p.img ? String(p.content || '') + ' ' + p.img : p.content) + '</div>' + likes + '</div>';
+            '<div class="feed-content">' + inlineBody(p.img ? String(p.content || '') + ' ' + p.img : p.content) + '</div>' + likes +
+            commentsHtmlFor(p, author) + '</div>';
         }).join('')
       : '<div class="ta-empty">还没有动态</div>';
     renderFeedAllCover();

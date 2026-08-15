@@ -6,7 +6,7 @@
 <title>Mochi 字卡传讯</title>
 <meta name="description" content="情侣专属的摸鱼字卡聊天模拟器">
 <meta name="theme-color" content="#111111">
-<link rel="manifest" href="./manifest.webmanifest">
+<link rel="manifest" href="./manifest.json">
 <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
 <link rel="apple-touch-icon" href="./icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -54,7 +54,7 @@
     <!-- 手机桌面（两页：情侣空间 + 音乐播放器） -->
     <div class="page" id="page-phone">
       <div class="decor-bar" id="decor-bar" hidden>
-        <span>装修模式 · 点击图标更换</span>
+        <span>装修模式 · 点击图标更换 / 清除</span>
         <button class="decor-done" id="decor-done">完成</button>
       </div>
       <div class="desktop-pages" id="desktop-pages">
@@ -118,7 +118,7 @@
           <div class="app-name">纪念</div>
         </div>
         <div class="app" data-app="divination">
-          <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="10.3" r="6.6"/><path d="M12 8l.75 1.95 1.95.75-1.95.75L12 13.4l-.75-1.95-1.95-.75 1.95-.75z"/><path d="M9.4 7.9l-.5 1.4"/><path d="M6.4 16.8h11.2M7.8 20.2h8.4"/></svg></div>
+          <div class="app-ico"><svg viewBox="0 0 24 24" fill="none" stroke="#111111" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="1.5"/><path d="M12 8.5l1.15 2.4 2.4 1.15-2.4 1.15L12 15.6l-1.15-2.4-2.4-1.15 2.4-1.15z"/></svg></div>
           <div class="app-name">占卜</div>
         </div>
         <div class="app" data-app="note">
@@ -638,7 +638,7 @@
           <div class="txt">清除本地数据</div>
         </div>
       </div>
-      <div class="ver">Mochi 字卡传讯 v3.5.79</div>
+      <div class="ver">Mochi 字卡传讯 v3.5.89</div>
       <div class="ver-credit">原版小红书@言序（1842523578）</div>
     </div>
 
@@ -677,46 +677,121 @@
         </span>
         <span class="ch-name">原版功能介绍</span>
       </div>
-      <div class="cal-scroll">
+            <div class="cal-scroll">
         <div class="cal-card glass">
           <div class="lic-title">Mochi 字卡传讯</div>
-          <div class="lic-p">基于「星言字卡」修改的简约版情侣聊天模拟器，极简黑白灰设计，数据全部保存在本地，无需联网。</div>
+          <div class="lic-p">基于「星言字卡」修改的简约版情侣聊天模拟器，极简黑白灰设计，数据全部保存在本地，无需联网。所有内容均为代码触发、按概率运行，联系方可主动发送聊天消息。</div>
         </div>
         <div class="cal-card glass">
           <div class="lic-h">聊天传讯</div>
-          <div class="lic-li">字卡交流：文字、情绪、心意、交流意图四种字卡回复</div>
+          <div class="lic-li">字卡交流：文字、情绪、心意、交流意图四种字卡回复，联系人所有内容均为字卡回复</div>
           <div class="lic-li">每条消息使用多字卡回复：可开启、调触发概率与最少/最多条数</div>
-          <div class="lic-li">撤回与补发、已读不回、拍一拍、表情包/图片/语音、引用、颜文字附加</div>
+          <div class="lic-li">联系人发送的消息可额外触发聊天情绪字卡（情绪 / 心意 / 交流意图）</div>
+          <div class="lic-li">撤回与补发、已读不回、拍一拍、颜文字附加</div>
+          <div class="lic-li">聊天可同时发送图文消息（表情包或上传图片）</div>
+          <div class="lic-li">聊天可引用消息，引用可发送表情包 + 文字</div>
+          <div class="lic-li">联系人可随机收藏我发送的消息；我也可以收藏联系方发送的消息</div>
           <div class="lic-li">主动发送：TA 会主动找你，可调概率、间隔与免打扰</div>
+          <div class="lic-li">聊天里点击顶部栏联系人的头像可打开【查岗 TA 的日常】页面</div>
+          <div class="lic-li">可搜索聊天记录并跳转到对应位置</div>
         </div>
         <div class="cal-card glass">
           <div class="lic-h">字卡系统</div>
           <div class="lic-li">字卡库：浏览全部字卡，支持搜索与自定义分组管理</div>
+          <div class="lic-li">聊天字卡分类可上传：【主字卡】【颜文字】【emoji】【表情包】【图片】【拍一拍】【语音】分类</div>
+          <div class="lic-li">互动卡片可自定义内容，概率触发互动（在字卡库里）</div>
           <div class="lic-li">TA 的询问 / TA 的小问题 / TA 的好奇 / TA 的吐槽：内容可自定义</div>
           <div class="lic-li">查岗日常字卡：地点、在做什么、说的话，均可自定义</div>
           <div class="lic-li">情绪回复：按你当前的心情自动匹配相应字卡</div>
         </div>
         <div class="cal-card glass">
-          <div class="lic-h">手机桌面</div>
-          <div class="lic-li">桌面多页滑动，可上传壁纸、自定义图标</div>
-          <div class="lic-li">时钟、日历、备忘录、今日心情、离周末还有几天</div>
-          <div class="lic-li">音乐播放器：播放列表、收藏、播放历史</div>
-          <div class="lic-li">和 TA 一起摸鱼打卡</div>
+          <div class="lic-h">互动卡片</div>
+          <div class="lic-li">联系人发送互动卡片：概率触发弹窗，或直接在聊天发送卡片</div>
+          <div class="lic-li">我发送互动卡片与联系人互动（邀请 TA / 问问 TA 在聊天内发送卡片）</div>
+          <div class="lic-li">可使用【帮我决定】提问联系人（功能参考：@FelixFelicis 9416318007）</div>
+          <div class="lic-li">联系人邀请一起播放音乐</div>
         </div>
         <div class="cal-card glass">
-          <div class="lic-h">主页功能</div>
-          <div class="lic-li">信箱：TA 会来信，可寄信、回信</div>
-          <div class="lic-li">朋友圈：TA 会发动态，可点赞、评论</div>
-          <div class="lic-li">通话：TA 会来电，可接听/拒绝，挂断后变为迷你小框</div>
-          <div class="lic-li">聊天统计：相处天数、消息数、常用字卡与情绪</div>
-          <div class="lic-li">提问记录、查岗、占卜、头像互动、记录</div>
+          <div class="lic-h">手机桌面</div>
+          <div class="lic-li">桌面多页滑动，可上传壁纸、自定义功能图标（默认空白需自己装修）</div>
+          <div class="lic-li">时钟、日历、备忘录、今日心情、离周末还有几天</div>
+          <div class="lic-li">桌面组件【今日情话】为联系人每日随机刷新想对你说的话（可在字卡库自定义添加）</div>
+          <div class="lic-li">桌面组件【今日备忘】可简单输入记录；【今日心情】可简单输入记录</div>
+          <div class="lic-li">和 TA 一起摸鱼打卡，桌面组件可统计摸鱼打卡天数</div>
+          <div class="lic-li">打开 mochi 使用时，我的摸鱼值和联系人的摸鱼值都会随机增加；桌面组件右侧黑色按钮可主动点击 +1</div>
+          <div class="lic-li">桌面【工作值】刷新机制与摸鱼值一致（双方随机增加）</div>
+        </div>
+        <div class="cal-card glass">
+          <div class="lic-h">查岗</div>
+          <div class="lic-li">桌面【查岗】包含：TA 的日常、TA 在哪里、TA 在做什么、TA 想对你说——为【TA 的日常】字卡库内容随机刷新，可自由添加字卡</div>
+          <div class="lic-li">联系人更新日常时，聊天消息里会发送一条【联系人昵称 更新了一条日常】，且有概率触发联系人提醒你查岗的消息</div>
+        </div>
+        <div class="cal-card glass">
+          <div class="lic-h">音乐</div>
+          <div class="lic-li">音乐功能可本地上传音乐，也可链接上传网易云免费歌曲</div>
+          <div class="lic-li">桌面组件与【音乐】功能同步显示播放状态</div>
+          <div class="lic-li">联系人可主动更换音乐播放模式（循环播放 / 顺序播放 / 随机播放）</div>
+          <div class="lic-li">我的收藏、批量管理、悬浮小框可拖动</div>
+        </div>
+        <div class="cal-card glass">
+          <div class="lic-h">通话</div>
+          <div class="lic-li">联系人可主动拨打和挂断电话；我也可以拨打</div>
+          <div class="lic-li">TA 会来电，可接听 / 拒绝，挂断后变为迷你小框</div>
+          <div class="lic-li">来电可播放自定义铃声（音效设置）</div>
+        </div>
+        <div class="cal-card glass">
+          <div class="lic-h">信箱</div>
+          <div class="lic-li">信箱里我可以主动给联系人写信和回信</div>
+          <div class="lic-li">联系人可以主动写信和回信</div>
+          <div class="lic-li">新来信标记、回信确认等概率在回复设置-信箱可调</div>
+        </div>
+        <div class="cal-card glass">
+          <div class="lic-h">朋友圈</div>
+          <div class="lic-li">朋友圈里我可以主动发布朋友圈动态（点右上角 + 图标）</div>
+          <div class="lic-li">联系人可主动发布朋友圈</div>
+          <div class="lic-li">联系人可评论、回复我的朋友圈，我也可以评论、回复</div>
+          <div class="lic-li">点击动态头像可查看我的 / 联系人的全部朋友圈</div>
+          <div class="lic-li">点赞、评论、通知提醒（未读数字角标）</div>
+        </div>
+        <div class="cal-card glass">
+          <div class="lic-h">日历</div>
+          <div class="lic-li">每日首次打开，联系人会在日历留言并触发弹窗</div>
+          <div class="lic-li">日历里除了联系人留言，我也可以简单留言</div>
+          <div class="lic-li">日历可切换月份查看</div>
+        </div>
+        <div class="cal-card glass">
+          <div class="lic-h">纪念</div>
+          <div class="lic-li">桌面【纪念】可设置纪念日和倒数日</div>
+          <div class="lic-li">恋爱纪念日显示在桌面顶部双方头像下方（我们在一起的天数）</div>
+          <div class="lic-li">下一个纪念日倒计时</div>
+        </div>
+        <div class="cal-card glass">
+          <div class="lic-h">记录统计</div>
+          <div class="lic-li">桌面【提问记录】统计历史：提问记录、TA 的询问、TA 的小问题、TA 的好奇、TA 的吐槽、我的邀请 / 问问</div>
+          <div class="lic-li">桌面【主页】统计以下历史：联系人今日情话、联系人换头像、通话记录、每日摸鱼值、我的今日备忘、我的今天的心情</div>
+          <div class="lic-li">桌面【聊天统计】统计：相处记录（第一次聊天时间、最近聊天时间、聊天消息条数、文字数量、收藏记录）、聊天记录（消息比例、最常聊天时间段、最常聊天日期、平均每日消息、最长连续聊天、单日最高消息）、情绪表达（文字字卡 / 情绪 / 心意 / 交流意图使用次数排行）</div>
         </div>
         <div class="cal-card glass">
           <div class="lic-h">个性化</div>
-          <div class="lic-li">联系人名称与头像，消息头像形状（圆形/方形）</div>
-          <div class="lic-li">聊天壁纸、气泡样式</div>
+          <div class="lic-li">联系人昵称和我的昵称在桌面双方头像组件下方修改</div>
+          <div class="lic-li">联系人名称与头像，消息头像形状（圆形 / 方形）</div>
+          <div class="lic-li">可自定义上传全局字体（聊天及其他页面全局生效）和自定义聊天气泡</div>
+          <div class="lic-li">聊天壁纸、气泡样式、气泡框大小</div>
+          <div class="lic-li">联系人【头像互动】可上传图片，联系人可触发随机更换头像</div>
+          <div class="lic-li">【头像互动】里点击切换联系人头像，可触发直接更换 / 联系人同意 / 联系人拒绝换头像</div>
           <div class="lic-li">通用设置：回复速度、概率、条数等参数可调</div>
           <div class="lic-li">后台保活与后台通知</div>
+          <div class="lic-li">后台保活：开启可播放禁音音频；打开【后台弹窗】并设置浏览器弹窗权限，联系人发送消息可触发浏览器弹窗</div>
+        </div>
+        <div class="cal-card glass">
+          <div class="lic-h">音效设置</div>
+          <div class="lic-li">可本地上传音频设置：【联系人来电铃声】【联系人聊天消息音效】【我的消息音效】</div>
+          <div class="lic-li">上传后可试听、清除；未设置则不播放</div>
+        </div>
+        <div class="cal-card glass">
+          <div class="lic-h">数据</div>
+          <div class="lic-li">数据存储设备本地，可导入导出</div>
+          <div class="lic-li">支持导入星言简约版聊天字卡库导出的 json（字卡内容与分组完整导入）</div>
         </div>
         <div class="cal-card glass">
           <div class="lic-h">许可</div>

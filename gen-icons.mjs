@@ -91,7 +91,7 @@ const BG = [255, 255, 255]; // 白色底
 const HEART = [255, 255, 255]; // 白色爱心填充
 const OUTLINE = [17, 17, 17]; // #111111 细描边
 
-// 普通图标：白色圆角底 + 白色爱心（细描边），与开屏 logo 同风格
+// 普通图标：白色底（不透明，圆角外也是白——避免系统把透明区域渲染成黑角）+ 白色爱心（细描边），与开屏 logo 同风格
 function makeIcon(size) {
   const radius = size * 0.22;
   const cy = size / 2 + size * 0.02; // 心形重心略偏上
@@ -100,13 +100,12 @@ function makeIcon(size) {
   return encodePng(size, (x, y) => {
     const sx = x + 0.5, sy = y + 0.5;
     const bg = roundRectCover(sx, sy, size, radius);
-    if (bg <= 0) return [0, 0, 0, 0];
     const ink = heartCover(sx, sy, size / 2, cy, scale);
     const inkBig = heartCover(sx, sy, size / 2, cy, scale + stroke);
     let c = BG;
     if (inkBig > 0 && ink < 0.5) c = OUTLINE;   // 爱心边缘 → 描边
     else if (ink >= 0.5) c = HEART;             // 爱心内部 → 白色填充
-    return [c[0], c[1], c[2], Math.round(255 * bg)];
+    return [c[0], c[1], c[2], 255];             // 全图不透明（白底），杜绝黑角
   });
 }
 

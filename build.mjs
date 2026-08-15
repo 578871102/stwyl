@@ -40,7 +40,7 @@ console.log('已生成 index.html（' + html.length + ' 字节，' + (html.split
 
 // ===== 复制 PWA 文件到根目录（随 GitHub Pages 部署） =====
 // sw.js 缓存名改为每次构建的 buildStamp → 新版本部署后老缓存自动失效，强制更新
-const pwaFiles = ['manifest.webmanifest', 'sw.js', 'icon-192.png', 'icon-512.png', 'icon-180.png', 'icon-maskable-512.png'];
+const pwaFiles = ['manifest.json', 'sw.js', 'icon-192.png', 'icon-512.png', 'icon-180.png', 'icon-maskable-512.png'];
 pwaFiles.forEach(f => copyFileSync(join(root, 'src', 'pwa', f), join(root, f)));
 const swPath = join(root, 'sw.js');
 let sw = readFileSync(swPath, 'utf8');

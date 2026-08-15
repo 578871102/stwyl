@@ -125,7 +125,17 @@
     const real = msgs.filter(m => m && m.side && m.text);
     const firstTs = real.length ? (real[0].ts || Date.now()) : 0;
     const lastTs = real.length ? (real[real.length - 1].ts || firstTs) : 0;
-    const days = firstTs ? Math.max(0, Math.floor((Date.now() - firstTs) / 864e5)) : 0;
+    // v3.5.81：相处天数 = 恋爱纪念日（love-start）起算；未设置则用第一条聊天记录时间；
+    //   聊天记录被清空/新装时不再显示 0（用纪念日兜底）
+    let daysStart = firstTs;
+    try {
+      const loveStart = store.get('love-start');
+      if (loveStart) {
+        const ls = new Date(loveStart + 'T00:00:00').getTime();
+        if (!isNaN(ls)) daysStart = ls;
+      }
+    } catch (e) {}
+    const days = daysStart ? Math.max(0, Math.floor((Date.now() - daysStart) / 864e5)) : 0;
     // ---- 相处记录 ----
     const recordEl = document.getElementById('st-record-cards');
     if (recordEl) {

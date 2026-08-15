@@ -3,8 +3,10 @@
 .chat-head {
   display:flex; align-items:center; gap:10px;
   padding:8px 2px 12px; flex-shrink:0;
-  background:transparent; /* v3.5.78 与底部输入栏一致：透明透出聊天背景图 */
+  /* v3.5.89 统一桌面白色简约风格（同 .glass）：白底 + 淡边 + 轻阴影 */
+  background:rgba(255,255,255,.92);
   border-bottom:1px solid rgba(0,0,0,.1);
+  box-shadow:0 2px 8px rgba(0,0,0,.04);
 }
 .ch-back {
   width:40px; height:40px; border-radius:50%;
@@ -215,9 +217,10 @@
 .chat-input-row {
   display:flex; align-items:center; gap:8px;
   border-radius:99px; padding:14px 12px 14px 16px; flex-shrink:0; margin-top:8px;
-  background:transparent; /* v3.5.50 透明：底部这一行完全透出壁纸，不再有长方形白底遮挡 */
-  border:1px solid rgba(0,0,0,.1); /* v3.5.77 与顶部栏 chat-head 完全一致的淡色边框（白色感） */
-  box-shadow:0 2px 12px rgba(0,0,0,.1);
+  /* v3.5.89 统一桌面白色简约风格（同 .glass）：白底 + 淡边 + 轻阴影 */
+  background:rgba(255,255,255,.92);
+  border:1px solid rgba(0,0,0,.1);
+  box-shadow:0 2px 8px rgba(0,0,0,.04);
   /* 供「对方正在输入」提示绝对定位（悬浮在栏上方，不占布局高度） */
   position:relative;
 }
@@ -238,9 +241,9 @@
 .page.full .chat-head {
   padding: calc(14px + env(safe-area-inset-top, 0px)) 18px 12px;
   margin: 0;
-  background:transparent; /* v3.5.78 与底部输入栏一致：透明透出聊天背景图 */
+  background:rgba(255,255,255,.92); /* v3.5.89 统一桌面白色简约风格 */
   border-bottom:1px solid rgba(0,0,0,.1);
-  box-shadow:none;
+  box-shadow:0 2px 8px rgba(0,0,0,.04);
 }
 .page.full .chat-body { padding: 14px 18px 28px; } /* v3.5.48 底部留白加大：最后一条消息不贴输入栏 */
 .page.full .chat-input-row { margin: 8px 18px 16px; }

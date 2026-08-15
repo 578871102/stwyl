@@ -330,13 +330,20 @@
 
   // 自定义手机桌面图标：点击设置项切到手机页进入编辑模式，再点击目标 app 上传替换
   // 注意：桌面分页后可能存在多个 .app-grid，全部绑定
+  // v3.5.87：装修模式下点击已有自定义图的图标 → 弹「更换 / 清除」；清除恢复默认图标
   const grids = document.querySelectorAll('.app-grid');
+  // 给每个图标存一份原始 SVG，清除时还原
+  document.querySelectorAll('.app .app-ico').forEach(ico => {
+    if (!ico.dataset.orig) ico.dataset.orig = ico.innerHTML;
+  });
   const restoreAppIcons = () => {
     document.querySelectorAll('.app').forEach(app => {
       const saved = store.get('app-icon-' + app.dataset.app);
+      const ico = app.querySelector('.app-ico');
       if (saved) {
-        const ico = app.querySelector('.app-ico');
         if (ico) ico.innerHTML = '<img src="' + saved + '" alt="">';
+      } else if (ico && ico.dataset.orig) {
+        ico.innerHTML = ico.dataset.orig;
       }
     });
   };
@@ -349,23 +356,39 @@
       if (!app) return;
       e.stopPropagation();
       const key = app.dataset.app;
-      const input = document.createElement('input');
-      input.type = 'file'; input.accept = 'image/*';
-      input.onchange = () => {
-        const f = input.files && input.files[0];
-        if (!f) { return; }
-        const reader = new FileReader();
-        reader.onload = () => {
-          compressImage(reader.result, 256).then(data => {
-            const ico = app.querySelector('.app-ico');
-            if (ico) ico.innerHTML = '<img src="' + data + '" alt="">';
-            store.set('app-icon-' + key, data);
-            // 持续装修：上传后保持编辑模式，手动点击"退出装修模式"才退出
-          });
+      const ico = app.querySelector('.app-ico');
+      const hasCustom = !!store.get('app-icon-' + key);
+      const pickFile = () => {
+        const input = document.createElement('input');
+        input.type = 'file'; input.accept = 'image/*';
+        input.onchange = () => {
+          const f = input.files && input.files[0];
+          if (!f) { return; }
+          const reader = new FileReader();
+          reader.onload = () => {
+            compressImage(reader.result, 256).then(data => {
+              if (ico) ico.innerHTML = '<img src="' + data + '" alt="">';
+              store.set('app-icon-' + key, data);
+              // 持续装修：上传后保持编辑模式，手动点击"退出装修模式"才退出
+            });
+          };
+          reader.readAsDataURL(f);
         };
-        reader.readAsDataURL(f);
+        input.click();
       };
-      input.click();
+      // 已有自定义图 → 可更换或清除；无自定义图 → 直接选文件
+      if (hasCustom && window.openModal) {
+        window.openModal('图标已自定义', '', (v) => {
+          if (v === '1') pickFile();
+          if (v === '2') {
+            try { localStorage.removeItem(uid + ':app-icon-' + key); } catch (err) {}
+            if (ico && ico.dataset.orig) ico.innerHTML = ico.dataset.orig;
+            toast('已恢复默认图标');
+          }
+        }, { noInput: true, pills: [{ label: '更换图片', value: '1' }, { label: '清除图片', value: '2' }] });
+      } else {
+        pickFile();
+      }
     });
   });
 

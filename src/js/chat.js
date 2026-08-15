@@ -199,7 +199,7 @@
   }
   function quoteHtml(q, side) {
     // side = 被引用消息的发送方（'out'=我发，'in'=TA发）
-    const who = side === 'out' ? (store.get('lbl-user') || '我') : (store.get('lbl-partner') || 'TA');
+    // v3.5.82：不再显示「引用 XX」标签行，只显示被引用的内容（方向也不再展示）
     if (q && typeof q === 'object') {
       // 组合消息引用：文字 + 图片缩略图（q = { t: 文字, imgs: [dataURL...] }）
       const imgs = (q.imgs || []).filter(s => typeof s === 'string' && s.indexOf('data:') === 0).slice(0, 3);
@@ -209,13 +209,13 @@
       let inner = '';
       if (imgs.length) inner += '<span class="msg-quote-imgs">' + imgs.map(s => '<img class="msg-quote-img" src="' + s + '" alt="图片">').join('') + '</span>';
       if (tHtml) inner += '<span class="msg-quote-text">' + tHtml + '</span>';
-      return '<div class="msg-quote"><span class="msg-quote-label">引用 ' + who + '</span>' + inner + '</div>';
+      return '<div class="msg-quote">' + inner + '</div>';
     }
     if (typeof q === 'string' && q.indexOf('data:') === 0) {
       // 引用图片（表情包）缩略图
-      return '<div class="msg-quote"><span class="msg-quote-label">引用 ' + who + '</span><img class="msg-quote-img" src="' + q + '" alt="图片"></div>';
+      return '<div class="msg-quote"><img class="msg-quote-img" src="' + q + '" alt="图片"></div>';
     }
-    return '<div class="msg-quote"><span class="msg-quote-label">引用 ' + who + '</span><span class="msg-quote-text">' + String(q || '').replace(/</g, '&lt;') + '</span></div>';
+    return '<div class="msg-quote"><span class="msg-quote-text">' + String(q || '').replace(/</g, '&lt;') + '</span></div>';
   }
   function bindToggle(b, side) {
     const who = side === 'out' ? '我' : '对方';

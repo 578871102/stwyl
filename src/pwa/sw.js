@@ -3,7 +3,7 @@
 // 新版本部署后旧缓存自动失效 → 强制更新到最新版
 const CACHE = 'mochi-v1';
 const BUILD_INFO = '';
-const PRECACHE = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-180.png'];
+const PRECACHE = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-180.png'];
 
 self.addEventListener('install', (e) => {
   // 跳过等待：新 sw 安装后立即接管（配合每次构建新缓存名 → 强制更新）
