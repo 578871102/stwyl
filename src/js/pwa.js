@@ -29,14 +29,29 @@
   const hide = () => { if (btn) btn.hidden = true; };
 
   window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
+    // 不阻止默认行为：让浏览器自由弹安装提示，菜单安装不受影响
     deferredPrompt = e;
     if (btn) btn.hidden = false;
   });
 
   if (btn) {
     btn.addEventListener('click', () => {
-      if (!deferredPrompt) return;
+      if (!deferredPrompt) {
+        // beforeinstallprompt 未触发（不满足可安装条件 / 已安装过旧版 / 浏览器 UI 变化）→ 引导手动安装
+        const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+        const isAndroid = /android/i.test(navigator.userAgent);
+        let guide = isIOS
+          ? 'iPhone 安装：点底部「分享」按钮 → 「添加到主屏幕」。'
+          : isAndroid
+            ? '安卓安装：点右上角「⋮」菜单 → 「安装应用」。\n若没有该选项：① 确认打开的是最新版 https 页面；② 到手机设置里删除已安装的旧版「Mochi」后重试。'
+            : '电脑安装：点地址栏右侧「安装」图标，或菜单 → 保存并分享 → 安装应用。';
+        if (window.openModal) {
+          window.openModal('安装到桌面', '', () => {}, { noInput: true, staticText: guide });
+        } else {
+          toast(guide);
+        }
+        return;
+      }
       deferredPrompt.prompt();
       deferredPrompt.userChoice.then((r) => {
         if (r.outcome === 'accepted') hide();

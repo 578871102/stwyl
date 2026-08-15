@@ -1,8 +1,8 @@
 // ===== Mochi Service Worker：离线缓存 + 网络优先 =====
 // v3.5.54：CACHE 名由 build.mjs 每次构建自动更新（mochi-<时间戳>），
 // 新版本部署后旧缓存自动失效 → 强制更新到最新版
-const CACHE = 'mochi-msu0ug1m';
-const BUILD_INFO = '部署于 2026-08-15 14:55';
+const CACHE = 'mochi-msu1iatb';
+const BUILD_INFO = '部署于 2026-08-15 15:13';
 const PRECACHE = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-180.png'];
 
 self.addEventListener('install', (e) => {
@@ -34,9 +34,14 @@ self.addEventListener('fetch', (e) => {
         }
         return res;
       })
-      .catch(() =>
-        caches.match(req).then((hit) => hit || caches.match('./index.html'))
-      )
+      .catch(() => {
+        // 仅导航请求回退到 index.html；其他资源（manifest/图标/JS 等）
+        // 只回退自身缓存，绝不用 HTML 顶替——否则安装/更新流程会拿到错误内容
+        if (req.mode === 'navigate') {
+          return caches.match('./index.html');
+        }
+        return caches.match(req);
+      })
   );
 });
 

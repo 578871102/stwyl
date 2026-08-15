@@ -34,9 +34,14 @@ self.addEventListener('fetch', (e) => {
         }
         return res;
       })
-      .catch(() =>
-        caches.match(req).then((hit) => hit || caches.match('./index.html'))
-      )
+      .catch(() => {
+        // 仅导航请求回退到 index.html；其他资源（manifest/图标/JS 等）
+        // 只回退自身缓存，绝不用 HTML 顶替——否则安装/更新流程会拿到错误内容
+        if (req.mode === 'navigate') {
+          return caches.match('./index.html');
+        }
+        return caches.match(req);
+      })
   );
 });
 
